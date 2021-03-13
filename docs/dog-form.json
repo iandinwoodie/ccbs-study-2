@@ -1,0 +1,1214 @@
+{
+  "id": "si7Re5",
+  "title": "Relationship Expectation Questionnaire (Part 2)",
+  "theme": {
+    "href": "https://api.typeform.com/themes/az2vZn"
+  },
+  "workspace": {
+    "href": "https://api.typeform.com/workspaces/9M4eRb"
+  },
+  "settings": {
+    "is_public": true,
+    "is_trial": false,
+    "language": "en",
+    "progress_bar": "percentage",
+    "show_progress_bar": false,
+    "show_typeform_branding": false,
+    "meta": {
+      "allow_indexing": false
+    }
+  },
+  "thankyou_screens": [
+    {
+      "ref": "31e58821-38e5-4aef-a581-6a7b50b3156c",
+      "title": "Thank you for participating!",
+      "properties": {
+        "show_button": true,
+        "share_icons": false,
+        "button_mode": "redirect",
+        "button_text": "Finish",
+        "redirect_url": "https://fundrazr.com/Ministudy2?ref=ab_68kZy6"
+      }
+    },
+    {
+      "ref": "90537705-6366-40d6-bad0-53da68e1ff29",
+      "title": "Your submission for {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}} has been saved!",
+      "properties": {
+        "show_button": true,
+        "share_icons": false,
+        "button_mode": "redirect",
+        "button_text": "Continue",
+        "redirect_url": "https://behaviorstudies.typeform.com/to/si7Re5?id={{hidden:id}}&msg=We%20have%20submissions%20for%3A&list={{hidden:list}}{{hidden:sep}}{{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}}&sep=%2C%20"
+      }
+    },
+    {
+      "ref": "default_tys",
+      "title": "Done! Your information was sent perfectly.",
+      "properties": {
+        "show_button": false,
+        "share_icons": false
+      }
+    }
+  ],
+  "fields": [
+    {
+      "id": "WSo5Y6iDtum7",
+      "title": "What is the name of the dog you would like to submit a response for?",
+      "ref": "0e332c28-e4f6-4ed7-89d3-9f84eacf3251",
+      "properties": {
+        "description": "{{hidden:msg}}{{hidden:list}}"
+      },
+      "validations": {
+        "required": true
+      },
+      "type": "short_text"
+    },
+    {
+      "id": "rkjCVw85qDhi",
+      "title": "How long were you thinking about adding a new dog to the family  before you brought {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}} home?",
+      "ref": "38e0f3f4-4041-4b80-ab4c-e3c1164cc56f",
+      "properties": {
+        "randomize": false,
+        "allow_multiple_selection": false,
+        "allow_other_choice": false,
+        "vertical_alignment": true,
+        "choices": [
+          {
+            "id": "QBYgRtAykWxT",
+            "ref": "1890a37f-1627-4526-9788-d07630506a94",
+            "label": "Less than 1 week"
+          },
+          {
+            "id": "xSfi0u1YsNJx",
+            "ref": "0e3ea07c-5de8-4965-bfe8-0994c299d519",
+            "label": "1 week - 6 months"
+          },
+          {
+            "id": "AsYuwa4aUEsp",
+            "ref": "fcc9dd8f-dcd1-4a9b-8226-a42eb07725d5",
+            "label": "6+ months - 6 years"
+          },
+          {
+            "id": "KgcezaACkimE",
+            "ref": "90377214-960e-404e-b0ae-3a52a6b609f0",
+            "label": "6+ years"
+          }
+        ]
+      },
+      "validations": {
+        "required": true
+      },
+      "type": "multiple_choice"
+    },
+    {
+      "id": "y70I5lcR8b42",
+      "title": "What was your primary motivation for getting {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}}?",
+      "ref": "787b2bbc-e785-44e7-baea-35a84734915b",
+      "properties": {
+        "randomize": false,
+        "allow_multiple_selection": false,
+        "allow_other_choice": true,
+        "vertical_alignment": true,
+        "choices": [
+          {
+            "id": "SscHjCAKsslh",
+            "ref": "437936f1-0d9a-4dc3-be41-60279bb21832",
+            "label": "Companionship and affection"
+          },
+          {
+            "id": "OFOC2cRdrtwh",
+            "ref": "fa17a862-2ff5-454e-8036-fdec0b719a04",
+            "label": "Social interaction"
+          },
+          {
+            "id": "HUm7TQCeGw5p",
+            "ref": "c84dc221-27e3-4718-8f0e-ffb0932861c1",
+            "label": "Exercise, adventure partner"
+          },
+          {
+            "id": "FSz5Ui1OpLae",
+            "ref": "fb7612bd-c41c-4bfc-b458-8759fa6a766a",
+            "label": "Protection"
+          },
+          {
+            "id": "mgy5FkfVfiZF",
+            "ref": "0956f7a5-d61d-4352-9548-78066907f698",
+            "label": "Working or sporting"
+          },
+          {
+            "id": "x77icYPTGtzj",
+            "ref": "f3f5e6e6-2add-4b21-be7b-6be234e4c92a",
+            "label": "Someone else in the home wanted a dog (e.g. kids, spouse)"
+          },
+          {
+            "id": "h1oHYoOelrDn",
+            "ref": "81d2e28e-212e-4861-8db8-46acf0603ef9",
+            "label": "Companion for another dog or pet"
+          }
+        ]
+      },
+      "validations": {
+        "required": true
+      },
+      "type": "multiple_choice"
+    },
+    {
+      "id": "QJi0bG1I2nQJ",
+      "title": "Where did you acquire {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}} from?",
+      "ref": "872fbcac-a8b1-4ea6-9121-50c643677916",
+      "properties": {
+        "randomize": false,
+        "allow_multiple_selection": false,
+        "allow_other_choice": false,
+        "vertical_alignment": true,
+        "choices": [
+          {
+            "id": "iZ3r3iB3uEd1",
+            "ref": "422d9a4e-0ded-495b-9d88-4bee70203985",
+            "label": "Breeder"
+          },
+          {
+            "id": "Oo3cPeV694fy",
+            "ref": "338cc273-8ea4-468e-8a57-7e2f6441cbcf",
+            "label": "Online"
+          },
+          {
+            "id": "FWW7TC6p2dVn",
+            "ref": "dc530b68-03f0-4c26-b770-21f7e7b759ee",
+            "label": "Local pet shop"
+          },
+          {
+            "id": "gHsceG3XTRvp",
+            "ref": "1999a2c9-c225-4b55-aee3-45d2d9a235e5",
+            "label": "Shelter/Rescue"
+          },
+          {
+            "id": "Lxq69DC9hCpL",
+            "ref": "9bf1398f-97c5-44d8-b86c-a3ba336c3e15",
+            "label": "Family member or friend"
+          },
+          {
+            "id": "XldIWhLbkS2J",
+            "ref": "83935080-49bd-4313-81c3-e7a14b3c56df",
+            "label": "Found roaming"
+          },
+          {
+            "id": "zwY0KplSysQF",
+            "ref": "34a05d64-29d9-4bd9-88f4-3645fe88b210",
+            "label": "Another country or island"
+          }
+        ]
+      },
+      "validations": {
+        "required": true
+      },
+      "type": "multiple_choice"
+    },
+    {
+      "id": "QmHs6AlkpMIY",
+      "title": "We would like to ask you about the characteristics you found most important when choosing {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}}",
+      "ref": "ba012a88-eb46-4c85-8fe2-12ad51c0206e",
+      "properties": {
+        "show_button": true,
+        "button_text": "Continue",
+        "fields": [
+          {
+            "id": "psSrHUf1SoP0",
+            "title": "Please select the characteristic you found most important when choosing {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}}.",
+            "ref": "34b7e273-986c-42bc-af28-4ebd5becb7e0",
+            "properties": {
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "VolpLFVSSc72",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "MjC1zWlqN7OA",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "bmz67lq7r1Uv",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "cdJUiqb6P76c",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "YJ9cjV4VPCsv",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "HzwSsRUewcEZ",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "rSaCZSMtyIrV",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "sYP7G346UK1I",
+            "title": "Your number 1 choice is {{field:34b7e273-986c-42bc-af28-4ebd5becb7e0}}.\nWhat was the next most important characteristic?",
+            "ref": "f445d7c0-0239-445e-95a1-be8baf7608cb",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "lH9Lv55viKxB",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "hZZ7C2PYMYlW",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "iztWxroymNEU",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "QWS9ZncHQo9a",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "OgEbtEVEgnIG",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "xkKl5n2BoCVM",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "SWM2lYJ3QGSf",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "wwJZ4JcWT8QB",
+            "title": "Your rankings so far:\n1. {{field:34b7e273-986c-42bc-af28-4ebd5becb7e0}}\n2. {{field:f445d7c0-0239-445e-95a1-be8baf7608cb}}\nWhat was the next most important characteristic?",
+            "ref": "73c3c390-1f5f-49dc-819c-6e7c22f4d397",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "nxslqNue4BsT",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "Tfm67qcqPVAc",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "KA3t0hKOYJuy",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "rpou1TNpuyRc",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "YlflegRCZ0Vx",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "hSWPNe6CmLz6",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "vQohWblY1ea1",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "Gkv5HIsqCbcw",
+            "title": "Your rankings so far:\n1. {{field:34b7e273-986c-42bc-af28-4ebd5becb7e0}}\n2. {{field:f445d7c0-0239-445e-95a1-be8baf7608cb}}\n3. {{field:73c3c390-1f5f-49dc-819c-6e7c22f4d397}}\nWhat was the next most important characteristic?",
+            "ref": "a0cf28a7-4533-4805-9ddd-bf7a4b897715",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "ejQZAItYy63Q",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "MVJtgbU7CAbe",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "L97qVKJPh509",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "etBLPM1F09uM",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "UmDAO7yUKdqF",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "nU6nRuuHH3Fw",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "n6FaxFWwIGaO",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "JMgDizHhvbrL",
+            "title": "Your rankings so far:\n1. {{field:34b7e273-986c-42bc-af28-4ebd5becb7e0}}\n2. {{field:f445d7c0-0239-445e-95a1-be8baf7608cb}}\n3. {{field:73c3c390-1f5f-49dc-819c-6e7c22f4d397}}\n4. {{field:a0cf28a7-4533-4805-9ddd-bf7a4b897715}}\nWhat was the next most important characteristic?",
+            "ref": "f84714ac-af2d-4fbf-826a-1854adda20ed",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "O7fK7c4jZWrf",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "pMDqd2VuIU4o",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "h6L6LddTKyOd",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "W8LERUCowYLt",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "oeRCYO04lNRT",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "hw7LYgkmmChg",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "G8VpogmWhWIo",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "g5WXNRSUHvRr",
+            "title": "Your rankings so far:\n1. {{field:34b7e273-986c-42bc-af28-4ebd5becb7e0}}\n2. {{field:f445d7c0-0239-445e-95a1-be8baf7608cb}}\n3. {{field:73c3c390-1f5f-49dc-819c-6e7c22f4d397}}\n4. {{field:a0cf28a7-4533-4805-9ddd-bf7a4b897715}}\n5. {{field:f84714ac-af2d-4fbf-826a-1854adda20ed}}\nWhat was the next most important characteristic?",
+            "ref": "5d263b50-a784-4292-a400-5a2e5d723eeb",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "vGlkxBB6HJ2e",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "v9ZO1M6erzOM",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "zJkj4Z0d8yBk",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "mZpaAPIACWmO",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "h867xregktLX",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "vgcsaCjIgywx",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "OgaOlASmNLoI",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          }
+        ]
+      },
+      "type": "group"
+    },
+    {
+      "id": "HSmlMnVrU0pq",
+      "title": "Were your primary relationship expectations met?",
+      "ref": "bb30e62a-77d7-4663-a6dd-aa3427728a47",
+      "properties": {
+        "randomize": false,
+        "allow_multiple_selection": false,
+        "allow_other_choice": false,
+        "vertical_alignment": true,
+        "choices": [
+          {
+            "id": "TgWOKZRfSJry",
+            "ref": "250f9e56-7f05-429c-b26f-718927990e80",
+            "label": "Yes"
+          },
+          {
+            "id": "eQvDudkrUarC",
+            "ref": "626655b3-2cf0-444a-8c23-aa3cca901d77",
+            "label": "Partially, I grew to love the dog over time"
+          },
+          {
+            "id": "a4LW68VkvAMF",
+            "ref": "515dc985-8d49-4a94-9769-e0ba3a4cc393",
+            "label": "Partially, I accepted the dog and made it work"
+          },
+          {
+            "id": "uvjolstehvVQ",
+            "ref": "6997bf1e-c59c-4eef-afff-884085dd5b83",
+            "label": "No, the dog was not a good match"
+          }
+        ]
+      },
+      "validations": {
+        "required": true
+      },
+      "type": "multiple_choice"
+    },
+    {
+      "id": "r030zZkzxIKp",
+      "title": "Do you still live with {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}}?",
+      "ref": "ff095232-4ca2-4a0a-90f0-217dd7ad867c",
+      "validations": {
+        "required": true
+      },
+      "type": "yes_no"
+    },
+    {
+      "id": "BR9z6pxxDB1I",
+      "title": "How long did you and {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}} live together?",
+      "ref": "60f8289b-d053-477f-9442-7e8a63c51dc8",
+      "properties": {
+        "randomize": false,
+        "allow_multiple_selection": false,
+        "allow_other_choice": false,
+        "vertical_alignment": true,
+        "choices": [
+          {
+            "id": "X68waHA3BQ3l",
+            "ref": "cc0d8220-6d0b-49a5-b101-9bb89fc81c67",
+            "label": "Less than 1 week"
+          },
+          {
+            "id": "snOvISYafo9P",
+            "ref": "c18b1ecb-c4cb-49d9-9dee-2d89e7e6f403",
+            "label": "1 week - 6 months"
+          },
+          {
+            "id": "oMmNDpemm6T6",
+            "ref": "bdb88f20-99d6-44ca-8f45-26c95696dbc6",
+            "label": "6+ months - 6 years"
+          },
+          {
+            "id": "phhuh1plBzBr",
+            "ref": "62ff9bea-a6b6-471a-8a85-4cb6a56019ec",
+            "label": "6+ years"
+          }
+        ]
+      },
+      "validations": {
+        "required": true
+      },
+      "type": "multiple_choice"
+    },
+    {
+      "id": "Q64E2m7vbGMT",
+      "title": "Where is {{field:0e332c28-e4f6-4ed7-89d3-9f84eacf3251}} now?",
+      "ref": "adadaca4-220f-4aa2-91a6-bf8697ef3128",
+      "properties": {
+        "randomize": false,
+        "allow_multiple_selection": false,
+        "allow_other_choice": true,
+        "vertical_alignment": true,
+        "choices": [
+          {
+            "id": "NFZzjMKngd3k",
+            "ref": "dc7952e4-ee80-465e-988e-99cc4b5d366d",
+            "label": "Rehomed"
+          },
+          {
+            "id": "Gw0L77eLNFzE",
+            "ref": "597e1af8-1bac-4c1f-966b-abed8c47d635",
+            "label": "Surrendered to a shelter/rescue"
+          },
+          {
+            "id": "bBf6sfbMyOj4",
+            "ref": "45c193b0-688d-4fdc-bfba-1eafcede544d",
+            "label": "Euthanized"
+          },
+          {
+            "id": "CB4hdl5WcQAC",
+            "ref": "ba1b5550-96a4-4903-89c8-35c1f1fac6b5",
+            "label": "Ran away/got lost"
+          },
+          {
+            "id": "ofJ8cdortBSu",
+            "ref": "c1c3ba6a-1c10-4e0b-897f-a3e564a54c59",
+            "label": "Passed"
+          }
+        ]
+      },
+      "validations": {
+        "required": true
+      },
+      "type": "multiple_choice"
+    },
+    {
+      "id": "pMidiWMQEIMH",
+      "title": "Would you like to enter information for another dog you own(ed)?",
+      "ref": "abe8b15c-81e1-4333-b723-4cc7af72ce25",
+      "validations": {
+        "required": false
+      },
+      "type": "yes_no"
+    },
+    {
+      "id": "lTUzfyMTsiH8",
+      "title": "Would you ever consider bringing another dog into your life?",
+      "ref": "7f1a66be-1911-4e5a-b541-f7b143add567",
+      "validations": {
+        "required": true
+      },
+      "type": "yes_no"
+    },
+    {
+      "id": "zShUVjFGAzaz",
+      "title": "We would like to know which characteristics you would find most important when considering another dog to bring into your life",
+      "ref": "c1ab6faa-858f-4dc8-8408-5160b2a13e4c",
+      "properties": {
+        "show_button": true,
+        "button_text": "Continue",
+        "fields": [
+          {
+            "id": "HHw2iJ9OD1XO",
+            "title": "Please select the characteristic you find most important from the list.",
+            "ref": "d30d661e-f2d7-410a-b46a-d38a54a03d0e",
+            "properties": {
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "CQZiJgYDzIVt",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "BLOWGuMblBhn",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "YZ4t9gCiIL8G",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "bW7xviApnZUv",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "PAAoYZEJFm0B",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "r1pBwhLscb2w",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "wG08plJtfPxq",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "dMNRyVhAWGmN",
+            "title": "Your number 1 choice is {{field:d30d661e-f2d7-410a-b46a-d38a54a03d0e}}.\nWhat is next most important characteristic?",
+            "ref": "6f061a8a-a699-450d-96dc-a71d015330f5",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "kjw06zIaCQWi",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "LEvrljQyfX4t",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "Ifah22woWHJB",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "xcoSeNkUCKfP",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "ulauH9I7nKP4",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "L63SHlZ4pNJx",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "dwUlc0HtDJkv",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "VExsZGSLWyfu",
+            "title": "Your rankings so far:\n1. {{field:d30d661e-f2d7-410a-b46a-d38a54a03d0e}}\n2. {{field:6f061a8a-a699-450d-96dc-a71d015330f5}}\nWhat is next most important characteristic?",
+            "ref": "b7c4b0a0-e3b7-40f9-ad79-920ae9000d6c",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "gVxkjkgwMeMz",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "n9GLZZZMveVx",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "anFBceJ4ap0Z",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "ufQMsatnEl6B",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "hFwU9P18DAE3",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "u72auaMD2LDo",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "Luxa7WN80aNQ",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "TQVRenoSppbK",
+            "title": "Your rankings so far:\n1. {{field:d30d661e-f2d7-410a-b46a-d38a54a03d0e}}\n2. {{field:6f061a8a-a699-450d-96dc-a71d015330f5}}\n3. {{field:b7c4b0a0-e3b7-40f9-ad79-920ae9000d6c}}\nWhat is next most important characteristic?",
+            "ref": "72e4ab9b-78c2-4b51-b024-242852dc476c",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "iEeHGKaAjpxf",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "GvaPG0QCHoxe",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "wakfuOx9fMSJ",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "rkSz0VXGOy2g",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "mTb2XnNvk3g8",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "p3h5Va4fGlNa",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "RNVRTQ0C2e48",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "NNbSYuipbd8r",
+            "title": "Your rankings so far:\n1. {{field:d30d661e-f2d7-410a-b46a-d38a54a03d0e}}\n2. {{field:6f061a8a-a699-450d-96dc-a71d015330f5}}\n3. {{field:b7c4b0a0-e3b7-40f9-ad79-920ae9000d6c}}\n4. {{field:72e4ab9b-78c2-4b51-b024-242852dc476c}}\nWhat is next most important characteristic?",
+            "ref": "99a610fd-ed00-4860-947e-0e58edebf589",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "Y4ZTDs4hpklb",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "VkZuMt7DrqY2",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "bpo4ve1LogDr",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "tbF2BhDqcmSz",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "ITKB8XCBO4JQ",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "pX0neRKIYX65",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "QSKRM0nhJtRI",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          },
+          {
+            "id": "lROcHqKJL3H0",
+            "title": "Your rankings so far:\n1. {{field:d30d661e-f2d7-410a-b46a-d38a54a03d0e}}\n2. {{field:6f061a8a-a699-450d-96dc-a71d015330f5}}\n3. {{field:b7c4b0a0-e3b7-40f9-ad79-920ae9000d6c}}\n4. {{field:72e4ab9b-78c2-4b51-b024-242852dc476c}}\n5. {{field:99a610fd-ed00-4860-947e-0e58edebf589}}\nWhat is next most important characteristic?",
+            "ref": "1fb1aa37-ccb0-4ebf-b690-1582fb90587e",
+            "properties": {
+              "description": "Please do not repeat selections.",
+              "randomize": false,
+              "allow_multiple_selection": false,
+              "allow_other_choice": false,
+              "vertical_alignment": true,
+              "choices": [
+                {
+                  "id": "Yoko6u2MndmS",
+                  "ref": "c3ed0705-208f-44b8-9e6f-af0146574186",
+                  "label": "Appearance"
+                },
+                {
+                  "id": "dgO2E4L4PVsO",
+                  "ref": "b7294232-c836-4c88-b9c1-de8a04efc8dd",
+                  "label": "Breed"
+                },
+                {
+                  "id": "Da0NE44bOjQO",
+                  "ref": "0a753481-5663-4620-87e7-672aef4248f2",
+                  "label": "Size"
+                },
+                {
+                  "id": "RWVPJHhoF9aG",
+                  "ref": "b1b99e4b-abcc-431e-b5bd-d51fe3ccbfc9",
+                  "label": "Age"
+                },
+                {
+                  "id": "umFnD6N9VbSn",
+                  "ref": "ef998169-2b3a-4f9f-a26d-571b72443166",
+                  "label": "Individual personality/behavior"
+                },
+                {
+                  "id": "bM37A6MCwl28",
+                  "ref": "53a27270-4053-415e-b443-d40e2db6ec10",
+                  "label": "Trainability"
+                },
+                {
+                  "id": "a4y1447tmlOL",
+                  "ref": "55481bd8-da6d-459b-9962-40b6f59f2643",
+                  "label": "Compatability with other pets in the home"
+                }
+              ]
+            },
+            "validations": {
+              "required": true
+            },
+            "type": "multiple_choice"
+          }
+        ]
+      },
+      "type": "group"
+    },
+    {
+      "id": "pSu3bK5a3cYg",
+      "title": "If you were to bring another dog into your life, where are you likely to get that dog?",
+      "ref": "036f0518-4a93-4cf9-80a2-618dd19a7c5c",
+      "properties": {
+        "randomize": false,
+        "allow_multiple_selection": false,
+        "allow_other_choice": false,
+        "vertical_alignment": true,
+        "choices": [
+          {
+            "id": "YINO2oRySG3v",
+            "ref": "be34d5bb-2d7c-46c9-99e7-0137d0b2bdc6",
+            "label": "Breeder"
+          },
+          {
+            "id": "nVI8FWWonY7q",
+            "ref": "b3618a51-2b96-4ffe-8746-c19c74c31912",
+            "label": "Online"
+          },
+          {
+            "id": "mgML79zS4EWh",
+            "ref": "f2eb1a6b-9b49-4564-aede-30199d0fed46",
+            "label": "Local pet shop"
+          },
+          {
+            "id": "T43ERGMN2AJL",
+            "ref": "a424b9fb-a242-4ca3-8b2a-1fe4f937226c",
+            "label": "Shelter/Rescue"
+          },
+          {
+            "id": "Ic65vhCATPEK",
+            "ref": "42582794-766f-4224-8356-31677f2bb0a3",
+            "label": "Family member or friend"
+          },
+          {
+            "id": "VfO12xt9QvJM",
+            "ref": "0f77d7a2-2bdb-495c-bfbe-1a43c6773763",
+            "label": "Roaming"
+          },
+          {
+            "id": "hYYECRH4ZE4t",
+            "ref": "574922af-2b2a-4c9e-acdf-e767921cd606",
+            "label": "Another country or island"
+          }
+        ]
+      },
+      "validations": {
+        "required": true
+      },
+      "type": "multiple_choice"
+    }
+  ],
+  "hidden": [
+    "id",
+    "msg",
+    "list",
+    "sep"
+  ],
+  "logic": [
+    {
+      "type": "field",
+      "ref": "ff095232-4ca2-4a0a-90f0-217dd7ad867c",
+      "actions": [
+        {
+          "action": "jump",
+          "details": {
+            "to": {
+              "type": "field",
+              "value": "60f8289b-d053-477f-9442-7e8a63c51dc8"
+            }
+          },
+          "condition": {
+            "op": "is",
+            "vars": [
+              {
+                "type": "field",
+                "value": "ff095232-4ca2-4a0a-90f0-217dd7ad867c"
+              },
+              {
+                "type": "constant",
+                "value": false
+              }
+            ]
+          }
+        },
+        {
+          "action": "jump",
+          "details": {
+            "to": {
+              "type": "field",
+              "value": "abe8b15c-81e1-4333-b723-4cc7af72ce25"
+            }
+          },
+          "condition": {
+            "op": "always",
+            "vars": []
+          }
+        }
+      ]
+    },
+    {
+      "type": "field",
+      "ref": "abe8b15c-81e1-4333-b723-4cc7af72ce25",
+      "actions": [
+        {
+          "action": "jump",
+          "details": {
+            "to": {
+              "type": "thankyou",
+              "value": "90537705-6366-40d6-bad0-53da68e1ff29"
+            }
+          },
+          "condition": {
+            "op": "is",
+            "vars": [
+              {
+                "type": "field",
+                "value": "abe8b15c-81e1-4333-b723-4cc7af72ce25"
+              },
+              {
+                "type": "constant",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "action": "jump",
+          "details": {
+            "to": {
+              "type": "field",
+              "value": "7f1a66be-1911-4e5a-b541-f7b143add567"
+            }
+          },
+          "condition": {
+            "op": "always",
+            "vars": []
+          }
+        }
+      ]
+    },
+    {
+      "type": "field",
+      "ref": "7f1a66be-1911-4e5a-b541-f7b143add567",
+      "actions": [
+        {
+          "action": "jump",
+          "details": {
+            "to": {
+              "type": "field",
+              "value": "c1ab6faa-858f-4dc8-8408-5160b2a13e4c"
+            }
+          },
+          "condition": {
+            "op": "is",
+            "vars": [
+              {
+                "type": "field",
+                "value": "7f1a66be-1911-4e5a-b541-f7b143add567"
+              },
+              {
+                "type": "constant",
+                "value": true
+              }
+            ]
+          }
+        },
+        {
+          "action": "jump",
+          "details": {
+            "to": {
+              "type": "thankyou",
+              "value": "31e58821-38e5-4aef-a581-6a7b50b3156c"
+            }
+          },
+          "condition": {
+            "op": "always",
+            "vars": []
+          }
+        }
+      ]
+    },
+    {
+      "type": "field",
+      "ref": "036f0518-4a93-4cf9-80a2-618dd19a7c5c",
+      "actions": [
+        {
+          "action": "jump",
+          "details": {
+            "to": {
+              "type": "thankyou",
+              "value": "31e58821-38e5-4aef-a581-6a7b50b3156c"
+            }
+          },
+          "condition": {
+            "op": "always",
+            "vars": []
+          }
+        }
+      ]
+    }
+  ],
+  "_links": {
+    "display": "https://behaviorstudies.typeform.com/to/si7Re5"
+  }
+}
