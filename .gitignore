@@ -1,0 +1,18 @@
+### General ###
+
+# macOS Finder artifacts
+.DS_Store
+
+### Python ###
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+env/
+venv/
+.env/
+.venv/
+
