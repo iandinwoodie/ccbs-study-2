@@ -1,0 +1,108 @@
+---
+title: "Statistical Inference"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(knitr)
+library(broom)
+library(plyr)
+library(AER)
+opts_chunk$set(echo=TRUE)
+set.seed(1)
+```
+
+# Preparing the Data
+
+## Loading the Tidy Data
+
+Load the tidy data from disk.
+
+```{r}
+df <- readRDS('../data/processed/tidy.Rds')
+#stopifnot(identical(dim(df)+0, c(1603, 34)))
+str(df, list.len=5)
+```
+
+## Drop Unnecessary Columns
+
+Retain only the columns necessary for inferential analysis.
+
+```{r}
+predictors <- c(
+  'time_thinking',
+  'primary_motivation',
+  '^acquisition_source',
+  'age_rank',
+  'appearance_rank',
+  'breed_rank',
+  'compatability_rank',
+  'personality_rank',
+  'size_rank',
+  'trainability_rank',
+  '^age$',
+  '^male$'
+)
+
+outcome <- 'is_satisfied'
+
+pattern <- paste(c(predictors, outcome), collapse='|')
+idx <- grep(pattern, names(df))
+df2 <- df[, idx]
+dim(df2)
+#stopifnot(identical(dim(df)+0, c(1603, 12)))
+```
+
+```{r}
+# Drops NAs before regression
+#df <- df[!is.na(df$is_male),]
+#df <- df[!is.na(df$is_neutered),]
+#summary(df)
+#stopifnot(identical(dim(df)+0, c(1302, 75)))
+```
+
+# Overall Fear/Anxiety
+
+```{r}
+# Fit model to data.
+f <- as.formula(paste0(outcome, "~", "."))
+m <- glm(f, data=df2, family="binomial")
+summary(m)
+
+print(vif(m))
+```
+
+
+```{r fa_overall_results, warning=FALSE}
+df_results <- broom::tidy(m, conf.int=TRUE, exponentiate=TRUE)
+#df_results$p.value <- p.adjust(df_results$p.value, method='BH')
+df_results$sig <- ''
+df_results[df_results$p.value <= .05, 'sig'] <- '*'
+df_results[df_results$p.value <= .01, 'sig'] <- '**'
+df_results[df_results$p.value <= .001, 'sig'] <- '***'
+for (i in 1:nrow(df_results)) {
+  if (is.na(df_results[i, 'conf.low']) | is.na(df_results[i, 'conf.high'])) next
+  if ((df_results[i, 'conf.low'] < 1) & (df_results[i, 'conf.high'] > 1)) {
+    df_results[i, 'sig'] <- ''
+  }
+}
+
+knitr::kable(df_results)
+```
+
+```{r}
+library(rpart)
+library(rpart.plot)
+fit <- rpart(is_satisfied~., data=df2, method = 'class', control = rpart.control("minsplit" = 3))
+print(fit)
+rpart.plot(fit)
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```

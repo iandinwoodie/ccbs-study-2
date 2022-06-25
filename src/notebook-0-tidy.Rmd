@@ -1,0 +1,335 @@
+---
+title: "Building Tidy Data"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo=TRUE)
+```
+
+# Assemble the Dataframe
+
+## Load the Dog Data
+
+Load the dog raw data and verify its dimensions and structure.
+
+```{r}
+df_dog <- read.csv('../data/raw/dogs.csv', header=TRUE, skipNul=TRUE)
+str(df_dog, list.len=5)
+stopifnot(identical(dim(df_dog)+0, c(1704, 29))) # Verify expected dim.
+```
+
+We see that we have 1704 responses across 29 fields. The columns names are not
+quite serviceable in their current state, so we rename them for ease of use.
+
+```{r}
+names <- c(
+  'dog_name',
+  'time_thinking',
+  'primary_motivation',
+  'acquisition_source',
+  'important_char_1',
+  'important_char_2',
+  'important_char_3',
+  'important_char_4',
+  'important_char_5',
+  'important_char_6',
+  'met_expectations',
+  'is_living_with_dog',
+  'time_together_len',
+  'curr_dog_location',
+  'internal_logic_1',
+  'is_consider_another_dog',
+  'revised_important_char_1',
+  'revised_important_char_2',
+  'revised_important_char_3',
+  'revised_important_char_4',
+  'revised_important_char_5',
+  'revised_important_char_6',
+  'revised_acquisition_source',
+  'owner_id',
+  'internal_logic_2',
+  'internal_logic_3',
+  'internal_logic_4',
+  'datetime',
+  'internal_logic_5'
+)
+colnames(df_dog) <- names
+str(df_dog)
+```
+
+### Drop Unnecessary Columns
+
+We don't need to retain the `internal_logic_*` columns since their only purpose
+was Typeform UI enhancement.
+
+```{r}
+df_dog <- subset(df_dog, select=-c(
+  internal_logic_1,
+  internal_logic_2,
+  internal_logic_3,
+  internal_logic_4,
+  internal_logic_5
+))
+stopifnot(identical(dim(df_dog)+0, c(1704, 24))) # Verify 5 columns dropped.
+```
+
+## Load the Dog Data
+
+Load the dog raw data and verify its dimensions and structure.
+
+```{r}
+df_owner <- read.csv('../data/raw/owners.csv', header=TRUE, skipNul=TRUE)
+str(df_owner)
+stopifnot(identical(dim(df_owner)+0, c(1225, 6))) # Verify expected dim.
+```
+
+```{r}
+names <- c(
+  'owner_id',
+  'zip_code',
+  'sex',
+  'age',
+  'datetime',
+  'internal_logic_1'
+)
+colnames(df_owner) <- names
+str(df_owner)
+```
+
+### Drop Unnecessary Columns
+
+We don't need to retain the `internal_logic_1` column since its only purpose was
+Typeform internal use. We also don't need the `zip_code` (it is an unreliable
+measure since not all respondents are located in the US) or `datetime`.
+
+```{r}
+df_owner <- subset(df_owner, select=-c(
+  internal_logic_1,
+  zip_code,
+  datetime
+))
+stopifnot(identical(dim(df_owner)+0, c(1225, 3))) # Verify 3 columns dropped.
+```
+
+## Concatenate Data Frames
+
+We want to concatenate the data frames so that the owner information is
+included for each entry in the dog data frame.
+
+```{r}
+#df <- df_dog %>% left_join(df_owner, by=c("owner_id"))
+df <- merge(df_dog, df_owner, by="owner_id")
+df <- df[!duplicated(df), ]
+#df_dog$owner_id <- trimws(df_dog$owner_id)
+#df_owner$owner_id <- trimws(df_owner$owner_id)
+#left_join(df_owner, df_dog, "owner_id")
+str(df)
+
+#df <- df_dog
+```
+
+# Adjusting Data Types
+
+## Numeric
+
+```{r, warning=FALSE}
+# Handle time values.
+df <- df %>%
+  mutate_at(c("age"), as.numeric)
+
+df$male <- ifelse(
+  df$sex == "male",
+  TRUE,
+  FALSE
+)
+
+str(df)
+```
+## Logical
+
+```{r}
+df <- df %>%
+  mutate_at(c("is_living_with_dog", "is_consider_another_dog"), as.logical)
+df %>% select(matches('^is_')) %>% str()
+```
+
+## Factor
+
+```{r}
+factors <- c(
+  'time_thinking',
+  'primary_motivation',
+  'acquisition_source',
+  'important_char_1',
+  'important_char_2',
+  'important_char_3',
+  'important_char_4',
+  'important_char_5',
+  'important_char_6',
+  'met_expectations',
+  'time_together_len',
+  'curr_dog_location',
+  'revised_important_char_1',
+  'revised_important_char_2',
+  'revised_important_char_3',
+  'revised_important_char_4',
+  'revised_important_char_5',
+  'revised_important_char_6',
+  'revised_acquisition_source'
+)
+df <- df %>%
+  mutate_at(factors, as.factor)
+
+primary_motivations <- c(
+  "Companionship and affection",
+  "Social interaction",
+  "Exercise, adventure partner",
+  "Protection",
+  "Working or sporting",
+  "Someone else in the home wanted a dog (e.g. kids, spouse)",
+  "Companion for another dog or pet"
+)
+df$primary_motivation <- as.factor(ifelse(
+  df$primary_motivation %in% primary_motivations,
+  as.character(df$primary_motivation),
+  "other"
+))
+
+x <- c(
+  "age",
+  "appearance",
+  "breed",
+  "compatability",
+  "personality",
+  "size",
+  "trainability"
+)
+
+levels(df$important_char_1) <- x
+levels(df$important_char_2) <- x
+levels(df$important_char_3) <- x
+levels(df$important_char_4) <- x
+levels(df$important_char_5) <- x
+levels(df$important_char_6) <- x
+
+# levels(df$revised_important_char_1) <- x
+# levels(df$revised_important_char_2) <- x
+# levels(df$revised_important_char_3) <- x
+# levels(df$revised_important_char_4) <- x
+# levels(df$revised_important_char_5) <- x
+# levels(df$revised_important_char_6) <- x
+
+str(df)
+```
+
+# Derived Columns
+
+## Generate Rank Columns
+
+```{r}
+df$age_rank <- 7
+df$appearance_rank <- 7
+df$breed_rank <- 7
+df$compatability_rank <- 7
+df$personality_rank <- 7
+df$size_rank <- 7
+df$trainability_rank <- 7
+
+char_cols <- c(
+  'important_char_1',
+  'important_char_2',
+  'important_char_3',
+  'important_char_4',
+  'important_char_5',
+  'important_char_6'
+)
+
+for (c in char_cols) {
+  rank <- which(char_cols == c)
+  for (r in 1:nrow(df)) {
+    rank_col <- paste0(as.character(df[r, c]), "_rank")
+    df[r, rank_col] <- rank
+  }
+}
+
+revised_char_cols <- c(
+  'revised_important_char_1',
+  'revised_important_char_2',
+  'revised_important_char_3',
+  'revised_important_char_4',
+  'revised_important_char_5',
+  'revised_important_char_6'
+)
+
+#for (c in char_cols) {
+#  rank <- which(char_cols == c)
+#  for (r in 1:nrow(df)) {
+#    choice <- as.character(df[r, c])
+#    df[r, choice] <- rank
+#  }
+#}
+
+str(df)
+```
+
+## Generate Satisfaction Columns
+
+```{r}
+df$is_satisfied <- ifelse(
+  df$met_expectations == "No, the dog was not a good match",
+  FALSE,
+  TRUE
+)
+df$is_satisfied <- ifelse(
+  df$met_expectations == "Yes",
+  TRUE,
+  FALSE
+)
+
+df$satisfaction_score <- as.numeric(df$met_expectations)
+```
+
+# Drop Duplicates
+
+Retain only the most recent owner-dog pair responses when multiple responses
+exist for a pair.
+
+```{r}
+df$id <- paste0(df$owner_id, "-", df$dog_name)
+df$id <- as.factor(df$id)
+df <- df %>%
+  group_by(owner_id, dog_name) %>%
+  filter(datetime == max(datetime)) %>%
+  ungroup()
+```
+
+# Drop Low Ages
+
+```{r}
+df <- df %>%
+  filter(age >= 18)
+```
+
+# Final Summary
+
+Take a last look at the data before saving it to disk.
+
+```{r}
+dim(df)
+summary(df)
+```
+
+# Saving the Tidy Data
+
+Save the data to a file in RDS format so that the data types are saved and the
+output file is compressed.
+
+```{r}
+saveRDS(df, '../data/processed/tidy.Rds')
+```
