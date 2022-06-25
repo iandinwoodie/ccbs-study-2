@@ -12,11 +12,14 @@ library(tidyverse)
 knitr::opts_chunk$set(echo=TRUE)
 ```
 
-# Assemble the Dataframe
+# Assemble the Study Data Frame
 
-## Load the Dog Data
+## Dog Data Processing
 
-Load the dog raw data and verify its dimensions and structure.
+### Load Raw Data
+
+Load the raw dog data and verify its dimensions and structure. We expect to have
+1704 responses across 29 fields.
 
 ```{r}
 df_dog <- read.csv('../data/raw/dogs.csv', header=TRUE, skipNul=TRUE)
@@ -24,144 +27,37 @@ str(df_dog, list.len=5)
 stopifnot(identical(dim(df_dog)+0, c(1704, 29))) # Verify expected dim.
 ```
 
-We see that we have 1704 responses across 29 fields. The columns names are not
-quite serviceable in their current state, so we rename them for ease of use.
+### Apply Readable Column Names
+
+A list of improved column names focused on readability has been provided in the
+reference directory. Let's load and apply these updated names to our data frame.
 
 ```{r}
-names <- c(
-  'dog_name',
-  'time_thinking',
-  'primary_motivation',
-  'acquisition_source',
-  'important_char_1',
-  'important_char_2',
-  'important_char_3',
-  'important_char_4',
-  'important_char_5',
-  'important_char_6',
-  'met_expectations',
-  'is_living_with_dog',
-  'time_together_len',
-  'curr_dog_location',
-  'internal_logic_1',
-  'is_consider_another_dog',
-  'revised_important_char_1',
-  'revised_important_char_2',
-  'revised_important_char_3',
-  'revised_important_char_4',
-  'revised_important_char_5',
-  'revised_important_char_6',
-  'revised_acquisition_source',
-  'owner_id',
-  'internal_logic_2',
-  'internal_logic_3',
-  'internal_logic_4',
-  'datetime',
-  'internal_logic_5'
-)
-colnames(df_dog) <- names
+colnames(df_dog) <- readr::read_lines(
+  '../references/dog-readable-column-names.txt')
 str(df_dog)
 ```
 
 ### Drop Unnecessary Columns
 
-We don't need to retain the `internal_logic_*` columns since their only purpose
-was Typeform UI enhancement.
+We can drop the `internal_logic_*` columns since their only purpose was for
+Typeform UI enhancement at the time of the survey. This operation will drop 5
+fields from the data frame.
 
 ```{r}
-df_dog <- subset(df_dog, select=-c(
-  internal_logic_1,
-  internal_logic_2,
-  internal_logic_3,
-  internal_logic_4,
-  internal_logic_5
-))
+df_dog <- df_dog %>%
+  select(-starts_with("internal_logic_"))
 stopifnot(identical(dim(df_dog)+0, c(1704, 24))) # Verify 5 columns dropped.
 ```
 
-## Load the Dog Data
-
-Load the dog raw data and verify its dimensions and structure.
+### Adjust Data Types
 
 ```{r}
-df_owner <- read.csv('../data/raw/owners.csv', header=TRUE, skipNul=TRUE)
-str(df_owner)
-stopifnot(identical(dim(df_owner)+0, c(1225, 6))) # Verify expected dim.
-```
+# Convert logical fields.
+df_dog <- df_dog %>%
+  mutate_at(c("is_living_with_dog", "is_open_to_another_dog"), as.logical)
 
-```{r}
-names <- c(
-  'owner_id',
-  'zip_code',
-  'sex',
-  'age',
-  'datetime',
-  'internal_logic_1'
-)
-colnames(df_owner) <- names
-str(df_owner)
-```
-
-### Drop Unnecessary Columns
-
-We don't need to retain the `internal_logic_1` column since its only purpose was
-Typeform internal use. We also don't need the `zip_code` (it is an unreliable
-measure since not all respondents are located in the US) or `datetime`.
-
-```{r}
-df_owner <- subset(df_owner, select=-c(
-  internal_logic_1,
-  zip_code,
-  datetime
-))
-stopifnot(identical(dim(df_owner)+0, c(1225, 3))) # Verify 3 columns dropped.
-```
-
-## Concatenate Data Frames
-
-We want to concatenate the data frames so that the owner information is
-included for each entry in the dog data frame.
-
-```{r}
-#df <- df_dog %>% left_join(df_owner, by=c("owner_id"))
-df <- merge(df_dog, df_owner, by="owner_id")
-df <- df[!duplicated(df), ]
-#df_dog$owner_id <- trimws(df_dog$owner_id)
-#df_owner$owner_id <- trimws(df_owner$owner_id)
-#left_join(df_owner, df_dog, "owner_id")
-str(df)
-
-#df <- df_dog
-```
-
-# Adjusting Data Types
-
-## Numeric
-
-```{r, warning=FALSE}
-# Handle time values.
-df <- df %>%
-  mutate_at(c("age"), as.numeric)
-
-df$male <- ifelse(
-  df$sex == "male",
-  TRUE,
-  FALSE
-)
-
-str(df)
-```
-## Logical
-
-```{r}
-df <- df %>%
-  mutate_at(c("is_living_with_dog", "is_consider_another_dog"), as.logical)
-df %>% select(matches('^is_')) %>% str()
-```
-
-## Factor
-
-```{r}
+# Convert factor fields.
 factors <- c(
   'time_thinking',
   'primary_motivation',
@@ -175,17 +71,19 @@ factors <- c(
   'met_expectations',
   'time_together_len',
   'curr_dog_location',
-  'revised_important_char_1',
-  'revised_important_char_2',
-  'revised_important_char_3',
-  'revised_important_char_4',
-  'revised_important_char_5',
-  'revised_important_char_6',
-  'revised_acquisition_source'
+  'new_important_char_1',
+  'new_important_char_2',
+  'new_important_char_3',
+  'new_important_char_4',
+  'new_important_char_5',
+  'new_important_char_6',
+  'new_acquisition_source'
 )
-df <- df %>%
+df_dog <- df_dog %>%
   mutate_at(factors, as.factor)
+rm(factors)
 
+# Adjust factor levels.
 primary_motivations <- c(
   "Companionship and affection",
   "Social interaction",
@@ -195,13 +93,23 @@ primary_motivations <- c(
   "Someone else in the home wanted a dog (e.g. kids, spouse)",
   "Companion for another dog or pet"
 )
-df$primary_motivation <- as.factor(ifelse(
-  df$primary_motivation %in% primary_motivations,
-  as.character(df$primary_motivation),
+df_dog$primary_motivation <- as.factor(ifelse(
+  df_dog$primary_motivation %in% primary_motivations,
+  as.character(df_dog$primary_motivation),
   "other"
 ))
-
-x <- c(
+rm(primary_motivations)
+levels(df_dog$primary_motivation) <- c(
+  "companionship",
+  "social interaction",
+  "exercise",
+  "protection",
+  "working",
+  "someone else",
+  "trainability",
+  "friend for pet"
+)
+simple_levels <- c(
   "age",
   "appearance",
   "breed",
@@ -210,22 +118,274 @@ x <- c(
   "size",
   "trainability"
 )
+levels(df_dog$important_char_1) <- simple_levels
+levels(df_dog$important_char_2) <- simple_levels
+levels(df_dog$important_char_3) <- simple_levels
+levels(df_dog$important_char_4) <- simple_levels
+levels(df_dog$important_char_5) <- simple_levels
+levels(df_dog$important_char_6) <- simple_levels
+simple_levels <- c("", simple_levels)
+levels(df_dog$new_important_char_1) <- simple_levels
+levels(df_dog$new_important_char_2) <- simple_levels
+levels(df_dog$new_important_char_3) <- simple_levels
+levels(df_dog$new_important_char_4) <- simple_levels
+levels(df_dog$new_important_char_5) <- simple_levels
+levels(df_dog$new_important_char_6) <- simple_levels
+rm(simple_levels)
 
-levels(df$important_char_1) <- x
-levels(df$important_char_2) <- x
-levels(df$important_char_3) <- x
-levels(df$important_char_4) <- x
-levels(df$important_char_5) <- x
-levels(df$important_char_6) <- x
+# data.frame(levels = unique(df_dog$time_thinking), value = as.numeric(unique(df_dog$time_thinking)))
+# df_dog$time_thinking <- factor(
+#   df_dog$time_thinking,
+#   levels=c(2,3,4,1),
+#   labels= c("1wk-6mos", "6mos-6yrs", ">6yrs", "<1wk")
+# )
+# data.frame(levels = unique(df_dog$time_thinking), value = as.numeric(unique(df_dog$time_thinking)))
 
-# levels(df$revised_important_char_1) <- x
-# levels(df$revised_important_char_2) <- x
-# levels(df$revised_important_char_3) <- x
-# levels(df$revised_important_char_4) <- x
-# levels(df$revised_important_char_5) <- x
-# levels(df$revised_important_char_6) <- x
+#simple_levels <- c(
+#  "<1wk",
+#  "1wk-6mos",
+#  "6mos-6yrs",
+#  ">6yrs"
+#)
+#df_dog$time_thinking <- factor(df_dog$time_thinking, levels=simple_levels,
+#                               ordered=TRUE)
 
+# levels(df_dog$time_together_len) <- c(
+#   "",
+#   "1wk-6mos",
+#   "6mos-6yrs",
+#   ">6yrs",
+#   "<1wk"
+# )
+levels(df_dog$acquisition_source) <- c(
+  "import",
+  "breeder",
+  "family-friend",
+  "found",
+  "pet shop",
+  "online",
+  "shelter"
+)
+levels(df_dog$new_acquisition_source) <- c(
+  "",
+  "import",
+  "breeder",
+  "family-friend",
+  "found",
+  "pet shop",
+  "online",
+  "shelter"
+)
+levels(df_dog$met_expectations) <- c(
+  "no",
+  "partially-time",
+  "partially-acceptance",
+  "yes"
+)
+dog_locations <- c(
+  "Rehomed",
+  "Surrendered to shelter/rescue",
+  "Euthanized",
+  "Ran away/got lost",
+  "Passed",
+  ""
+)
+df_dog$curr_dog_location <- as.factor(ifelse(
+  df_dog$curr_dog_location %in% dog_locations,
+  as.character(df_dog$curr_dog_location),
+  "other"
+))
+rm(dog_locations)
+levels(df_dog$curr_dog_location) <- c(
+  "",
+  "euthanized",
+  "other",
+  "passed",
+  "lost",
+  "rehomed"
+)
+
+# Convert date fields.
+df_dog$datetime <- as.POSIXct(strptime(df_dog$datetime,"%m/%d/%Y %H:%M:%S"))
+
+# Normalize char fields.
+df_dog$name <- trimws(tolower(df_dog$name))
+
+# Examine the updated data frame.
+str(df_dog)
+```
+
+### Handle Repeat Responses
+
+We can examine the (`owner_id`, `name`) pairs, which we will refer to as the
+unique response identifier, in the data frame to determine if there are repeat
+responses for any of the dogs.
+
+```{r}
+df_dog %>%
+  group_by(owner_id, name) %>%
+  count() %>%
+  filter(n>1) %>%
+  arrange(desc(n))
+```
+
+We see that there are 109 non-unique response identifiers and that the maximum
+occurrence of an identifier is 2. Therefore, elimination of these duplicates
+should yield a data frame with $1704-109=1595$ responses.
+
+```{r}
+df_dog <- df_dog %>%
+  group_by(owner_id, name) %>%
+  slice_max(datetime) %>%
+  ungroup()
+dim(df_dog)
+stopifnot(identical(dim(df_dog)+0, c(1595, 24))) # Verify expected dim.
+```
+
+We see that the number of responses in the data frame now matches the number of
+unique response identifiers for this data frame.
+
+### Summary
+
+Let's look at a summary of the dog data before we move on.
+
+```{r}
+summary(df_dog)
+```
+
+## Owner Data Processing
+
+### Load Raw Data
+
+Load the raw owner data and verify its dimensions and structure. We expect to
+have 1225 responses across 6 fields.
+
+```{r}
+df_owner <- read.csv('../data/raw/owners.csv', header=TRUE, skipNul=TRUE)
+str(df_owner)
+stopifnot(identical(dim(df_owner)+0, c(1225, 6))) # Verify expected dim.
+```
+
+### Apply Readable Column Names
+
+A list of improved column names focused on readability has been provided in the
+reference directory. Let's load and apply these updated names to our data frame.
+
+```{r}
+colnames(df_owner) <- readr::read_lines(
+  '../references/owner-readable-column-names.txt')
+str(df_owner)
+```
+
+### Drop Unnecessary Columns
+
+We don't need to retain the `internal_logic_1` column since its only purpose was
+Typeform internal use nor do we need the `zip_code`; it is an unreliable
+measure since not all respondents are located in the US.
+
+```{r}
+df_owner <- subset(df_owner, select=-c(
+  internal_logic_1,
+  zip_code
+))
+stopifnot(identical(dim(df_owner)+0, c(1225, 4))) # Verify 2 columns dropped.
+```
+
+### Adjust Data Types
+
+```{r}
+# Convert numeric and logical fields.
+df_owner <- df_owner %>%
+  mutate_at("age", as.numeric) %>%
+  mutate_at("sex", as.factor)
+
+# Convert date fields.
+df_owner$datetime <- as.POSIXct(strptime(df_owner$datetime,"%m/%d/%Y %H:%M:%S"))
+
+# Examine the updated data frame.
+str(df_owner)
+```
+
+### Handle Repeat Responses
+
+For this data frame the `owner_id` is the unique response identifier. We expect
+one response for each `owner_id`;  let's verify this expectation.
+
+```{r}
+df_owner %>%
+  group_by(owner_id) %>%
+  count() %>%
+  filter(n>1) %>%
+  arrange(desc(n))
+```
+
+We see that there are 154 non-unique response identifiers and that the maximum
+occurrence of an identifier is 4. Therefore, elimination of these duplicates
+should yield a data frame with $1225-154-7-1=1063$ responses.
+
+```{r}
+df_owner <- df_owner %>%
+  group_by(owner_id) %>%
+  slice_max(datetime) %>%
+  ungroup()
+dim(df_owner)
+stopifnot(identical(dim(df_owner)+0, c(1063, 4))) # Verify expected dim.
+```
+
+We see that the number of responses in the data frame now matches the number of
+unique response identifiers for this data frame.
+
+### Summary
+
+Let's look at a summary of the owner data before we move on.
+
+```{r}
+summary(df_owner)
+```
+
+## Build Unified Data Frame
+
+We now use both the dog and owner data frames to construct a unified data frame.
+This is the data frame that will be used for all analyses in the study.
+
+### Verifying Agreement of Owner Unique Identifiers
+
+The set of owner ID's in the dog data frame (set A) must be a subset of the set
+of owner ID's in the owner data frame (set B). We can verify this by evaluating
+the equality: $A \cap B = A$.
+
+```{r}
+set_a <- df_dog %>%
+  select(owner_id) %>%
+  unique()
+set_b <- df_owner %>%
+  select(owner_id) %>%
+  unique()
+result <- setequal(intersect(set_a, set_b), set_a)
+print(paste("A ∩ B = A:", result))
+stopifnot(result)
+rm(set_a, set_b, result)
+```
+
+### Merge Data Frames
+
+We merge the dog and owner data frames about the owner ID's and expect the
+resulting data frame to have 1595 responses (the same number of responses as the
+dog data frame) across 27 fields ($24+4-1=27$).
+
+```{r}
+df <- merge(df_dog, df_owner, by="owner_id")
 str(df)
+stopifnot(identical(dim(df)+0, c(1595, 27))) # Verify expected dim.
+rm(df_dog, df_owner)
+```
+
+### Drop Unnecessary Columns
+
+```{r}
+df <- df %>%
+  select(-starts_with("datetime"))
+stopifnot(identical(dim(df)+0, c(1595, 25))) # Verify 2 columns dropped.
 ```
 
 # Derived Columns
@@ -257,35 +417,20 @@ for (c in char_cols) {
     df[r, rank_col] <- rank
   }
 }
-
-revised_char_cols <- c(
-  'revised_important_char_1',
-  'revised_important_char_2',
-  'revised_important_char_3',
-  'revised_important_char_4',
-  'revised_important_char_5',
-  'revised_important_char_6'
-)
-
-#for (c in char_cols) {
-#  rank <- which(char_cols == c)
-#  for (r in 1:nrow(df)) {
-#    choice <- as.character(df[r, c])
-#    df[r, choice] <- rank
-#  }
-#}
+rm(char_cols, c, r, rank, rank_col)
 
 str(df)
+stopifnot(identical(dim(df)+0, c(1595, 32))) # Verify 7 columns added.
 ```
 
 ## Generate Satisfaction Columns
 
 ```{r}
-df$is_satisfied <- ifelse(
-  df$met_expectations == "No, the dog was not a good match",
-  FALSE,
-  TRUE
-)
+#df$is_satisfied <- ifelse(
+#  df$met_expectations == "No, the dog was not a good match",
+#  FALSE,
+#  TRUE
+#)
 df$is_satisfied <- ifelse(
   df$met_expectations == "Yes",
   TRUE,
@@ -293,27 +438,17 @@ df$is_satisfied <- ifelse(
 )
 
 df$satisfaction_score <- as.numeric(df$met_expectations)
-```
 
-# Drop Duplicates
-
-Retain only the most recent owner-dog pair responses when multiple responses
-exist for a pair.
-
-```{r}
-df$id <- paste0(df$owner_id, "-", df$dog_name)
-df$id <- as.factor(df$id)
-df <- df %>%
-  group_by(owner_id, dog_name) %>%
-  filter(datetime == max(datetime)) %>%
-  ungroup()
+stopifnot(identical(dim(df)+0, c(1595, 34))) # Verify 2 columns added.
 ```
 
 # Drop Low Ages
 
 ```{r}
-df <- df %>%
-  filter(age >= 18)
+#df <- df %>%
+#  filter(age >= 18)
+#stopifnot(identical(dim(df)+0, c(1543, 34))) # Verify rows dropped.
+
 ```
 
 # Final Summary

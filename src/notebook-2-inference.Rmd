@@ -23,7 +23,7 @@ Load the tidy data from disk.
 
 ```{r}
 df <- readRDS('../data/processed/tidy.Rds')
-#stopifnot(identical(dim(df)+0, c(1603, 34)))
+#stopifnot(identical(dim(df)+0, c(1543, 34)))
 str(df, list.len=5)
 ```
 
@@ -63,6 +63,7 @@ dim(df2)
 #summary(df)
 #stopifnot(identical(dim(df)+0, c(1302, 75)))
 ```
+
 
 # Overall Fear/Anxiety
 
