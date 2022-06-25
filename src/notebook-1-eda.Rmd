@@ -1,0 +1,63 @@
+---
+title: "Exploratory Data Analysis (EDA)"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo=TRUE)
+```
+
+# Loading the Tidy Data
+
+Load the tidy data from disk.
+
+```{r}
+df <- readRDS('../data/processed/tidy.Rds')
+stopifnot(identical(dim(df)+0, c(1603, 34)))
+str(df, list.len=5)
+```
+
+# Descriptive Stats
+
+## Households
+
+Get the nunber of participating dog owners.
+
+```{r}
+length(unique(df$owner_id))
+```
+
+Determine the median number of dogs per household.
+
+```{r}
+summary(as.data.frame(table(df$owner_id))$Freq)
+```
+
+## Owner Genders and Ages
+
+TODO
+
+# Acquisition Source
+
+```{r}
+df %>%
+  filter(!is.na(acquisition_source)) %>%
+  group_by(acquisition_source) %>%
+  summarise(n=n()) %>%
+  arrange(desc(n))
+```
+
+# Plots
+
+```{r}
+hist(df$satisfaction_score)
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```
