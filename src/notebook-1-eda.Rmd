@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
 ```
 
 # Loading the Tidy Data
@@ -16,7 +17,7 @@ Load the tidy data from disk.
 
 ```{r}
 df <- readRDS('../data/processed/tidy.Rds')
-stopifnot(identical(dim(df)+0, c(1603, 34)))
+#stopifnot(identical(dim(df)+0, c(1603, 34)))
 str(df, list.len=5)
 ```
 

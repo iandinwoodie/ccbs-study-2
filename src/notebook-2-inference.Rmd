@@ -2,7 +2,7 @@
 title: "Statistical Inference"
 author: "Ian Dinwoodie"
 date: "`r Sys.Date()`"
-output: html_document: default
+output: html_document
 ---
 
 ```{r setup, include=FALSE}

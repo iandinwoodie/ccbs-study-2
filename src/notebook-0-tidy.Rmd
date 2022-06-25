@@ -2,14 +2,13 @@
 title: "Building Tidy Data"
 author: "Ian Dinwoodie"
 date: "`r Sys.Date()`"
-output:
-  pdf_document: default
-  html_document: default
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
 library(tidyverse)
 knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
 ```
 
 # Assemble the Dataframe
