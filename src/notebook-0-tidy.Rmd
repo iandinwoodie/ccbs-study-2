@@ -406,8 +406,7 @@ Take a last look at the data before saving it to disk.
 ```{r}
 dim(df)
 summary(df)
-#stopifnot(identical(dim(df)+0, c(1543, 21))) # Verify expected dim.
-#stopifnot(identical(dim(df)+0, c(1411, 21))) # Verify expected dim.
+stopifnot(identical(dim(df)+0, c(1543, 28))) # Verify expected dim.
 ```
 
 # Saving the Tidy Data
