@@ -90,7 +90,7 @@ df_dog <- df_dog %>%
       family_or_friend="Family member or friend",
       found="Found roaming",
       pet_shop="Local pet shop",
-      pet_shop="Online",
+      online="Online",
       rescue="Shelter/Rescue"
     )
   ) %>%
@@ -102,7 +102,7 @@ df_dog <- df_dog %>%
       family_or_friend="Family member or friend",
       found="Roaming",
       pet_shop="Local pet shop",
-      pet_shop="Online",
+      online="Online",
       rescue="Shelter/Rescue"
     )
   ) %>%
@@ -133,16 +133,16 @@ df_dog <- df_dog %>%
   mutate_at(
     c("time_thinking", "time_together_len"),
     ~ factor(
-      fct_recode(
-        .,
-        lt_one_wk="Less than 1 week",
-        one_wk_to_six_mo="1 week - 6 months",
-        gt_six_mo_to_six_yr="6+ months - 6 years",
-        gt_six_yr="6+ years"
-      ),
-      ordered=F,
-      levels=c("lt_one_wk", "one_wk_to_six_mo", "gt_six_mo_to_six_yr",
-               "gt_six_yr")
+        fct_recode(
+          .,
+          lt_one_wk="Less than 1 week",
+          one_wk_to_six_mo="1 week - 6 months",
+          gt_six_mo_to_six_yr="6+ months - 6 years",
+          gt_six_yr="6+ years"
+        ),
+        ordered=F,
+        levels=c("lt_one_wk", "one_wk_to_six_mo", "gt_six_mo_to_six_yr",
+                 "gt_six_yr")
     )
   ) %>%
   mutate(datetime = as.POSIXct(strptime(datetime,"%m/%d/%Y %H:%M:%S")))
@@ -388,6 +388,33 @@ df <- df %>%
 stopifnot(identical(dim(df)+0, c(1543, 28))) # Verify expected dim.
 ```
 
+## Drop Improperly Ranked 
+
+Drop entries where the sum of ranks for an entry does not match the expected
+value.
+
+```{r}
+rank_cols <- colnames(df %>% select(contains("rank") & !contains("revised")))
+
+rank_validator <- function(row) {
+  cnt <- vector(mode="integer", length=7)
+  for (col in rank_cols) {
+    rank <- row[[col]]
+    cnt[rank] = cnt[rank] + 1
+    if (cnt[rank] > 1) return(FALSE)
+  }
+  return(TRUE)
+}
+
+df <- df %>%
+  rowwise() %>%
+  mutate(is_rank_valid = rank_validator(.data)) %>%
+  ungroup() %>%
+  filter(is_rank_valid) %>%
+  select(-is_rank_valid)
+stopifnot(identical(dim(df)+0, c(1411, 28))) # Verify expected dim.
+```
+
 ## Verify Unique Entries
 
 Check that all (owner, dog) entry pairs are unique.
@@ -406,7 +433,7 @@ Take a last look at the data before saving it to disk.
 ```{r}
 dim(df)
 summary(df)
-stopifnot(identical(dim(df)+0, c(1543, 28))) # Verify expected dim.
+#stopifnot(identical(dim(df)+0, c(1405, 28))) # Verify expected dim.
 ```
 
 # Saving the Tidy Data
