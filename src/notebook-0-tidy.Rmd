@@ -316,7 +316,7 @@ for (rank_col in char_map) {
   df[, revised_rank_col] <- NA
   for (r in 1:nrow(df)) {
     df[r, revised_rank_col] <- ifelse(
-      is.na(df[r, "is_consider_another_dog"]), NA, 7)
+      df[r, "is_consider_another_dog"] == TRUE, 7, NA)
   }
 }
 
