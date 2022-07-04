@@ -1,0 +1,150 @@
+---
+title: "Statistical Inference - Logistic Regression"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(car)
+library(MASS)
+library(caret)
+library(boot)
+#library(broom)
+library(rpart)
+library(rpart.plot)
+#library(qvalue)
+knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
+```
+
+# Preparing the Data
+
+## Loading the Tidy Data
+
+Load the tidy data from disk.
+
+```{r}
+df <- readRDS('../data/processed/tidy.Rds')
+#stopifnot(identical(dim(df)+0, c(1543, 28)))
+str(df, list.len=5)
+```
+
+## Data Preperation
+
+Drop columns that won't be used by the inferential models.
+
+```{r}
+df <- df %>%
+  dplyr::select(-c(
+    owner_id,
+    dog_name,
+    time_together_len,
+    revised_acquisition_source,
+    is_living_with_dog,
+    curr_dog_location,
+    met_expectations,
+    is_consider_another_dog
+  )) %>%
+  dplyr::select(-contains("revised"))
+
+dim(df)
+summary(df)
+```
+
+
+(Optional) Convert the ranks from numeric to ordered factor.
+
+```{r}
+rank_cols = c("age_rank", "appearance_rank", "breed_rank", "compatability_rank",
+              "personality_rank", "size_rank", "trainability_rank")
+#df <- df %>% mutate_at(rank_cols, ordered)
+```
+
+# Binary Logistic Regression
+
+## Preprocessing
+
+Remove problematic variables and rows with missing values.
+
+```{r}
+df <- df %>%
+  dplyr::select(-trainability_rank) %>%
+  #dplyr::select(-is_male) %>%
+  mutate(is_satisfied = as.factor(is_satisfied)) %>%
+  #mutate(is_satisfied = as.factor(ifelse(is_satisfied, "yes", "no"))) %>%
+  drop_na()
+```
+
+```{r}
+mm <- model.matrix(is_satisfied~.-1, df)
+str(mm)
+```
+
+```{r}
+# Eliminate near zero-variance variables.
+(nzv_metrics <- nearZeroVar(mm, saveMetrics=TRUE))
+nzv_cnt <- sum(nzv_metrics$nzv)
+print(paste("Near zero-variance vars to eliminate:", nzv_cnt))
+if (nzv_cnt) {
+  print(colnames(mm[, nzv_metrics$nzv]))
+  mm <- mm[, !nzv_metrics$nzv]
+}
+
+# Eliminate linearly correlated predictors.
+combo_info <- findLinearCombos(mm)
+combo_cnt <- length(combo_info$remove)
+print(paste("Linearly corr. combos vars to eliminate:", combo_cnt))
+if (combo_cnt) {
+  print(colnames(mm[, combo_info$remove]))
+  mm <- mm[, -combo_info$remove]
+}
+```
+
+```{r}
+df <- cbind.data.frame(is_satisfied=df$is_satisfied, mm)
+colnames(df) <- make.names(colnames(df))
+dim(df)
+summary(df)
+```
+
+## Fitting Model
+
+```{r}
+set.seed(1)
+
+glm_fit <- glm(is_satisfied~., data=df, family="binomial")
+
+# print cv scores
+summary(glm_fit)
+```
+
+```{r}
+broom::tidy(glm_fit, conf.int=TRUE, exponentiate=TRUE)
+```
+
+## Bootstrap Confidence Intervals
+
+```{r}
+glm_est <- function(split, ...) {
+  glm(glm_fit$formula, data = analysis(split), family="binomial") %>%
+    tidy()
+}
+
+#set.seed(1) #500
+#set.seed(500)
+set.seed(1024)
+conf_ints <- bootstraps(df, 1000, apparent = TRUE) %>%
+  mutate(results = map(splits, glm_est)) %>%
+  int_bca(results, .fn = glm_est) %>%
+  mutate_at(c(".estimate", ".lower", ".upper"), ~ exp(.))
+(conf_ints)
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```

@@ -7,11 +7,12 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
-library(knitr)
-library(broom)
-library(plyr)
-library(AER)
-opts_chunk$set(echo=TRUE)
+library(tidymodels)
+library(MASS)
+library(caret)
+
+
+knitr::opts_chunk$set(echo=TRUE)
 set.seed(1)
 ```
 
@@ -27,78 +28,361 @@ df <- readRDS('../data/processed/tidy.Rds')
 str(df, list.len=5)
 ```
 
-## Drop Unnecessary Columns
+## Drop/Rename/Reorder Columns
 
-Retain only the columns necessary for inferential analysis.
+Drop or adjust (rename/reorder) columns.
 
 ```{r}
-predictors <- c(
-  'time_thinking',
-  'primary_motivation',
-  '^acquisition_source',
-  'age_rank',
-  'appearance_rank',
-  'breed_rank',
-  'compatability_rank',
-  'personality_rank',
-  'size_rank',
-  'trainability_rank',
-  '^age$',
-  '^male$'
-)
+old_names <- c(
+  colnames(df %>% dplyr::select(contains("rank") & !contains("revised"))),
+  "time_thinking", "primary_motivation", "acquisition_source",
+  "is_living_with_dog", "age")
+new_names <- c(
+  "ch.age", "ch.appearance", "ch.breed", "ch.compatability", "ch.personality",
+  "ch.size", "ch.trainability", "time", "motive", "source", "is_with_dog",
+  "owner_age")
 
-outcome <- 'is_satisfied'
+df <- df %>%
+  rename_with(~ new_names, all_of(old_names)) %>%
+  dplyr::select(
+    -owner_id,
+    -dog_name,
+    -met_expectations,
+    -time_together_len,
+    -curr_dog_location,
+    -is_consider_another_dog,
+    -is_with_dog,
+    -contains("revised")
+  ) %>%
+  relocate(is_male, .before = everything()) %>%
+  relocate(owner_age, .after=is_male) %>%
+  relocate(is_satisfied, .after = last_col()) %>%
+  mutate(is_satisfied = as.factor(ifelse(is_satisfied==TRUE, "yes", "no"))) %>%
+  drop_na()
 
-pattern <- paste(c(predictors, outcome), collapse='|')
-idx <- grep(pattern, names(df))
-df2 <- df[, idx]
-dim(df2)
-#stopifnot(identical(dim(df)+0, c(1603, 12)))
+rm(old_names, new_names)
+dim(df)
+summary(df)
+```
+
+# Preprocessing
+
+```{r}
+# Reference: https://bookdown.org/rehk/stm1001_dsm_introduction_to_machine_learning_in_r/machine-learning-in-r-using-the-caret-package.html
+dummies <- dummyVars(is_satisfied ~ ., data = df, fullRank = F)
+df_pp <- cbind(as_tibble(predict(dummies, newdata = df)),
+               is_satisfied=df$is_satisfied)
+df_pp <- df_pp %>%
+  dplyr::select(-is_maleFALSE) %>%
+  rename(is_male=is_maleTRUE)
+
+head(df_pp)
 ```
 
 ```{r}
-# Drops NAs before regression
-#df <- df[!is.na(df$is_male),]
-#df <- df[!is.na(df$is_neutered),]
-#summary(df)
-#stopifnot(identical(dim(df)+0, c(1302, 75)))
+# Eliminate near zero-variance variables.
+(nzv_metrics <- nearZeroVar(df_pp, freqCut=25, saveMetrics=TRUE))
+#(nzv_metrics <- nearZeroVar(df_pp, saveMetrics=TRUE))
+nzv_cnt <- sum(nzv_metrics$nzv)
+print(paste("Near zero-variance vars to eliminate:", nzv_cnt))
+if (nzv_cnt) {
+  print(colnames(df_pp[, nzv_metrics$nzv]))
+  df_pp <- df_pp[, !nzv_metrics$nzv]
+}
 ```
-
-# Overall Fear/Anxiety
 
 ```{r}
-# Fit model to data.
-f <- as.formula(paste0(outcome, "~", "."))
-m <- glm(f, data=df2, family="binomial")
-summary(m)
-
-print(vif(m))
+# Eliminate linearly correlated predictors.
+combo_info <- findLinearCombos(
+  df_pp %>% dplyr::select(-contains("ch."), -is_satisfied))
+combo_cnt <- length(combo_info$remove)
+print(paste("Linearly corr. combos vars to eliminate:", combo_cnt))
+if (combo_cnt) {
+  print(colnames(df_pp)[combo_info$remove])
+  #df_pp <- df_pp[, -combo_info$remove]
+}
 ```
 
+```{r}
+str(df_pp)
+```
 
-```{r fa_overall_results, warning=FALSE}
-df_results <- broom::tidy(m, conf.int=TRUE, exponentiate=TRUE)
-#df_results$p.value <- p.adjust(df_results$p.value, method='BH')
-df_results$sig <- ''
-df_results[df_results$p.value <= .05, 'sig'] <- '*'
-df_results[df_results$p.value <= .01, 'sig'] <- '**'
-df_results[df_results$p.value <= .001, 'sig'] <- '***'
-for (i in 1:nrow(df_results)) {
-  if (is.na(df_results[i, 'conf.low']) | is.na(df_results[i, 'conf.high'])) next
-  if ((df_results[i, 'conf.low'] < 1) & (df_results[i, 'conf.high'] > 1)) {
-    df_results[i, 'sig'] <- ''
+# Models
+
+## Background Variables
+
+```{r}
+df_back <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."))
+summary(df_back)
+```
+
+```{r}
+set.seed(1)
+glm_fit_back <- glm(is_satisfied~.-1, df_back, family="binomial")
+summary(glm_fit_back)
+with(summary(glm_fit_back), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table <- function(fit, data) {
+  df_results <- broom::tidy(fit, conf.int=TRUE, exponentiate=TRUE)
+  
+  glm_est <- function(split, ...) {
+    glm(fit$formula, data = analysis(split), family="binomial") %>%
+      tidy()
   }
+  
+  set.seed(1)
+  conf_ints <- bootstraps(data, 1000, apparent = TRUE) %>%
+    mutate(results = map(splits, glm_est)) %>%
+    int_bca(results, .fn = glm_est) %>%
+    mutate_at(c(".estimate", ".lower", ".upper"), ~ exp(.)) %>%
+    dplyr::select(term, .lower, .upper) %>%
+    rename(bs.low=.lower, bs.high=.upper)
+  
+  df_results <- merge(df_results, conf_ints, by="term")
+  df_results$p.value <- p.adjust(df_results$p.value, method='BH')
+  df_results$sig <- ''
+  df_results[df_results$p.value <= .05, 'sig'] <- '*'
+  df_results[df_results$p.value <= .01, 'sig'] <- '**'
+  df_results[df_results$p.value <= .001, 'sig'] <- '***'
+  for (i in 1:nrow(df_results)) {
+    if (is.na(df_results[i, 'bs.low']) | is.na(df_results[i, 'bs.high'])) next
+    if ((df_results[i, 'bs.low'] <= 1) & (df_results[i, 'bs.high'] >= 1)) {
+      df_results[i, 'sig'] <- ''
+    }
+  }
+  return(knitr::kable(df_results))
 }
 
-knitr::kable(df_results)
+bs_table(glm_fit_back, df_back)
+```
+
+## Time
+
+```{r}
+df_time <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."))
+summary(df_time)
 ```
 
 ```{r}
-library(rpart)
-library(rpart.plot)
-fit <- rpart(is_satisfied~., data=df2, method = 'class', control = rpart.control("minsplit" = 3))
-print(fit)
-rpart.plot(fit)
+set.seed(1)
+glm_fit_time <- glm(is_satisfied~.-1, df_time, family="binomial")
+summary(glm_fit_time)
+with(summary(glm_fit_time), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_time, df_time)
+```
+
+```{r}
+anova(glm_fit_back, glm_fit_time, test="Chisq")
+```
+
+## Motive
+
+```{r}
+df_motive <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."))
+summary(df_motive)
+```
+
+```{r}
+set.seed(1)
+glm_fit_motive <- glm(is_satisfied~.-1, df_motive, family="binomial")
+summary(glm_fit_motive)
+with(summary(glm_fit_motive), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_motive, df_motive)
+```
+
+```{r}
+anova(glm_fit_time, glm_fit_motive, test="Chisq")
+```
+
+## Characteristics
+
+### Age
+
+```{r}
+char <- "ch.age"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
+summary(glm_fit_char)
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Appearance
+
+```{r}
+char <- "ch.appearance"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
+summary(glm_fit_char)
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Breed
+
+```{r}
+char <- "ch.breed"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
+summary(glm_fit_char)
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Compatability
+
+```{r}
+char <- "ch.compatability"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
+summary(glm_fit_char)
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Personality
+
+```{r}
+char <- "ch.personality"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
+summary(glm_fit_char)
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Size
+
+```{r}
+char <- "ch.size"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
+summary(glm_fit_char)
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Trainability
+
+```{r}
+char <- "ch.trainability"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
+summary(glm_fit_char)
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
 ```
 
 # Save Session Info

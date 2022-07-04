@@ -1,0 +1,198 @@
+---
+title: "Statistical Inference - Logistic Regression"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(car)
+library(MASS)
+library(caret)
+library(boot)
+#library(broom)
+#library(rpart)
+#library(rpart.plot)
+library(qvalue)
+knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
+```
+
+# Preparing the Data
+
+## Loading the Tidy Data
+
+Load the tidy data from disk.
+
+```{r}
+df <- readRDS('../data/processed/tidy.Rds')
+stopifnot(identical(dim(df)+0, c(1543, 28)))
+str(df, list.len=5)
+```
+
+## Data Preperation
+
+Drop columns that won't be used by the inferential models.
+
+```{r}
+df <- df %>%
+  dplyr::select(-c(
+    owner_id,
+    dog_name,
+    time_together_len,
+    revised_acquisition_source,
+    is_living_with_dog,
+    curr_dog_location,
+    met_expectations,
+    is_consider_another_dog
+  )) %>%
+  dplyr::select(-contains("revised"))
+
+dim(df)
+summary(df)
+```
+
+Drop entries where the sum of ranks for an entry does not match the expected
+value.
+
+```{r}
+df <- df %>%
+  rowwise() %>%
+    mutate(rank_sum = sum(c_across(age_rank:trainability_rank))) %>%
+  ungroup() %>%
+  filter(rank_sum == 28) %>%
+  dplyr::select(-rank_sum)
+
+dim(df)
+summary(df)
+```
+
+Convert dependent variable to factor.
+
+```{r}
+df <- df %>%
+  mutate(is_satisfied = as.factor(is_satisfied))
+```
+
+Drop problematic columns and rows that are missing values.
+
+```{r}
+df <- df %>%
+  dplyr::select(-c(
+    trainability_rank,
+    is_male
+  )) %>%
+  drop_na()
+
+dim(df)
+summary(df)
+```
+
+(Optional) Convert the ranks from numeric to ordered factor.
+
+```{r}
+# char_map = c(
+#   "Age"="age_rank",
+#   "Appearance"="appearance_rank",
+#   "Breed"="breed_rank",
+#   "Compatability with other pets in the home"="compatability_rank",
+#   "Individual personality/behavior"="personality_rank",
+#   "Size"="size_rank",
+#   "Trainability"="trainability_rank"
+# )
+# df <- df %>% mutate_at(as.vector(char_map), ordered)
+```
+
+## Preprocessing
+
+```{r}
+mm <- model.matrix(is_satisfied~.-1, df)
+str(mm)
+```
+
+```{r}
+# Eliminate near zero-variance variables.
+(nzv_metrics <- nearZeroVar(mm, saveMetrics=TRUE))
+nzv_cnt <- sum(nzv_metrics$nzv)
+print(paste("Near zero-variance vars to eliminate:", nzv_cnt))
+if (nzv_cnt) {
+  print(colnames(mm[, nzv_metrics$nzv]))
+  mm <- mm[, !nzv_metrics$nzv]
+}
+
+# Eliminate linearly correlated predictors.
+combo_info <- findLinearCombos(mm)
+combo_cnt <- length(combo_info$remove)
+print(paste("Linearly corr. combos vars to eliminate:", combo_cnt))
+if (combo_cnt) {
+  print(colnames(mm[, combo_info$remove]))
+  mm <- mm[, -combo_info$remove]
+}
+```
+
+```{r}
+df <- cbind.data.frame(is_satisfied=df$is_satisfied, mm)
+dim(df)
+summary(df)
+```
+
+## Data Partitions
+
+Partition the data into training and testing sets.
+
+```{r}
+set.seed(555)
+in_train <- createDataPartition(
+  y = df$is_satisfied,
+  p = .75,
+  list = FALSE
+)
+training <- df[in_train,]
+dim(training)
+testing <- df[-in_train,]
+dim(testing)
+```
+
+# Binary Logistic Regression
+
+## Training
+
+```{r}
+set.seed(1)
+
+# define training control
+train_control <- trainControl(method = "LOOCV")
+train_control <- trainControl(method = "cv")
+
+# train the model on training set
+glm_fit <- train(
+  is_satisfied~.,
+  data = training,
+  trControl = train_control,
+  method = "glm",
+  family=binomial()
+)
+
+(glm_fit)
+summary(glm_fit)
+```
+
+```{r}
+glm_classes <- predict(glm_fit, newdata = training)
+confusionMatrix(data = glm_classes, training$is_satisfied)
+```
+
+## Testing
+
+```{r}
+glm_classes <- predict(glm_fit, newdata = testing)
+confusionMatrix(data = glm_classes, testing$is_satisfied)
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```

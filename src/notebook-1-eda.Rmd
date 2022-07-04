@@ -460,8 +460,173 @@ fa(r=cor(df_rank), nfactors=dim(df_rank)[2], rotate="varimax", SMC=FALSE, fm="pa
 # SCRATCH BELOW THIS LINE
 
 ```{r}
-df %>%
-  filter(is_consider_another_dog==F)
+library(mlogit)
+data("Game", package = "mlogit")
+head(Game,2)
+```
+
+```{r}
+df_g <- dfidx(Game, varying = 1:12, choice = "ch", ranked = TRUE,
+              idnames = c("chid", "alt"))
+head(df_g)
+```
+
+```{r}
+summary(mlogit(ch ~ own | hours + age, df_g, reflevel = "PC"))
+```
+
+```{r}
+old_names <- colnames(df %>% select(contains("rank") & !contains("revised")))
+old_names <- c(old_names, "time_thinking", "primary_motivation",
+               "acquisition_source", "is_living_with_dog", "age")
+new_names <- c("ch.age", "ch.appearance", "ch.breed", "ch.compatability",
+               "ch.personality", "ch.size", "ch.trainability")
+new_names <- c(new_names, "time", "motive", "source", "is_with_dog", "owner_age")
+
+df2 <- df %>%
+  rename_with(~ new_names, all_of(old_names)) %>%
+  select(
+    -contains("revised"),
+    -owner_id,
+    -dog_name,
+    -met_expectations,
+    -time_together_len,
+    -curr_dog_location,
+    -is_consider_another_dog,
+    -is_with_dog # Linearly correlated with ch.trainability
+  ) %>%
+  drop_na() %>%
+  relocate(is_satisfied, .before = everything()) %>%
+  relocate(is_male, .after = is_satisfied) %>%
+  #relocate(is_with_dog, .after=is_male) %>%
+  relocate(owner_age, .after=is_male)
+
+summary(df2)
+```
+
+```{r}
+# mm <- model.matrix(is_satisfied~., df2)
+# summary(mm)
+# 
+# # Eliminate near zero-variance variables.
+# nzv_metrics <- nearZeroVar(mm, saveMetrics=TRUE)
+# nzv_cnt <- sum(nzv_metrics$nzv)
+# print(paste("Near zero-variance vars to eliminate:", nzv_cnt))
+# if (nzv_cnt) {
+#   print(colnames(mm[, nzv_metrics$nzv]))
+#   mm <- mm[, !nzv_metrics$nzv]
+# }
+# 
+# # Eliminate linearly correlated predictors.
+# combo_info <- findLinearCombos(mm)
+# combo_cnt <- length(combo_info$remove)
+# print(paste("Linearly corr. combos vars to eliminate:", combo_cnt))
+# if (combo_cnt) {
+#   print(colnames(mm[, combo_info$remove]))
+#   mm <- mm[, -combo_info$remove]
+# }
+# 
+# df2_m <- cbind.data.frame(is_satisfied=df2$is_satisfied, mm)
+# colnames(df2_m) <- make.names(colnames(df2_m))
+# summary(df2_m)
+```
+
+```{r}
+# Reference: https://bookdown.org/rehk/stm1001_dsm_introduction_to_machine_learning_in_r/machine-learning-in-r-using-the-caret-package.html
+dummies <- dummyVars(is_satisfied ~ ., data = df2, fullRank = F)
+df2_updated <- as_tibble(predict(dummies, newdata = df2))
+df2_updated <- cbind(is_satisfied = df2$is_satisfied, df2_updated)
+summary(df2_updated)
+```
+```{r}
+# Eliminate near zero-variance variables.
+nzv_metrics <- nearZeroVar(df2_updated, saveMetrics=TRUE)
+nzv_cnt <- sum(nzv_metrics$nzv)
+print(paste("Near zero-variance vars to eliminate:", nzv_cnt))
+if (nzv_cnt) {
+  print(colnames(df2_updated[, nzv_metrics$nzv]))
+  df2_updated <- df2_updated[, !nzv_metrics$nzv]
+}
+colnames(df2_updated)
+```
+
+```{r}
+# Eliminate linearly correlated predictors.
+combo_info <- findLinearCombos(df2_updated)
+print(combo_info)
+combo_cnt <- length(combo_info$remove)
+print(paste("Linearly corr. combos vars to eliminate:", combo_cnt))
+if (combo_cnt) {
+  print(colnames(df2_updated)[combo_info$remove])
+  df2_updated <- df2_updated[, -combo_info$remove]
+}
+colnames(df2_updated)
+```
+
+
+```{r}
+# We need to make the number of cols equal for each varying type. Right now we
+# have: time=4, motive=8, source=7, ch=7.
+#df2_updated$time.fake_5 <- NA
+#df2_updated$time.fake_6 <- NA
+#df2_updated$time.fake_7 <- NA
+#df2_updated$time.fake_8 <- NA
+#df2_updated$source.fake_8 <- NA
+#df2_updated$ch.fake_8 <- NA
+
+df2_updated <- df2_updated %>%
+  dplyr::select(-is_maleFALSE) %>%
+  mutate(is_satisfied = as.factor(ifelse(is_satisfied==TRUE, "yes", "no"))) %>%
+  dplyr::select(is_satisfied, is_maleTRUE, owner_age, ch.age, contains("source"))
+
+summary(df2_updated)
+```
+
+```{r}
+#df2_g <- dfidx(df2_updated, varying = 4:10, choice = "ch", ranked = TRUE,
+#               idnames = c("chid", "alt"))
+#head(df2_g)
+```
+
+```{r}
+# tm <- mlogit.data(
+#   df2_updated, choice="ch", shape = "wide", sep=".", ranked=TRUE, varying = 4:10)
+# head(tm)
+```
+
+```{r}
+#summary(mlogit(is_satisfied ~ 1 + ch | is_maleTRUE + owner_age, data=tm, reflevel="TRUE"))
+```
+
+```{r}
+set.seed(16505050)
+train_index <- createDataPartition(
+  df2_updated$is_satisfied,
+  p = .7,
+  list = FALSE, 
+  times = 1
+)
+training <- df2_updated[train_index, ]
+summary(training)
+testing <- df2_updated[-train_index, ]
+summary(testing)
+```
+
+```{r}
+set.seed(1)
+fit <- train(is_satisfied ~ .,
+             data = training,
+                 method = "C5.0Cost",
+                 trControl = trainControl(method = "LOOCV", classProbs = TRUE,
+                                          summaryFunction = twoClassSummary)
+                                          #summaryFunction = prSummary)
+)
+fit
+confusionMatrix(predict(fit, testing), testing$is_satisfied)
+```
+
+```{r}
+plot(fit)
 ```
 
 # Save Session Info

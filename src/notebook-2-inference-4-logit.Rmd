@@ -1,0 +1,281 @@
+---
+title: "Statistical Inference - Logistic Regression"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(car)
+library(MASS)
+library(caret)
+library(boot)
+#library(broom)
+library(rpart)
+library(rpart.plot)
+#library(qvalue)
+knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
+```
+
+# Preparing the Data
+
+## Loading the Tidy Data
+
+Load the tidy data from disk.
+
+```{r}
+df <- readRDS('../data/processed/tidy.Rds')
+#stopifnot(identical(dim(df)+0, c(1543, 28)))
+str(df, list.len=5)
+```
+
+## Data Preperation
+
+Drop columns that won't be used by the inferential models.
+
+```{r}
+df <- df %>%
+  dplyr::select(-c(
+    owner_id,
+    dog_name,
+    time_together_len,
+    revised_acquisition_source,
+    is_living_with_dog,
+    curr_dog_location,
+    met_expectations,
+    is_consider_another_dog
+  )) %>%
+  dplyr::select(-contains("revised"))
+
+dim(df)
+summary(df)
+```
+
+Drop entries where the sum of ranks for an entry does not match the expected
+value.
+
+```{r}
+df <- df %>%
+  rowwise() %>%
+    mutate(rank_sum = sum(c_across(age_rank:trainability_rank))) %>%
+  ungroup() %>%
+  filter(rank_sum == 28) %>%
+  dplyr::select(-rank_sum)
+
+dim(df)
+summary(df)
+```
+
+Convert dependent variable to factor and drop rows that are missing values.
+
+```{r}
+df <- df %>%
+  mutate(is_satisfied = factor(
+    fct_recode(as.factor(is_satisfied), yes="TRUE", no="FALSE"),
+    levels=c("yes", "no")
+  )) %>%
+  drop_na()
+
+dim(df)
+summary(df)
+```
+
+(Optional) Convert the ranks from numeric to ordered factor.
+
+```{r}
+rank_cols = c("age_rank", "appearance_rank", "breed_rank", "compatability_rank",
+              "personality_rank", "size_rank", "trainability_rank")
+#df <- df %>% mutate_at(rank_cols, ordered)
+```
+
+## Preprocessing
+
+```{r}
+mm <- model.matrix(is_satisfied~.-1, df)
+str(mm)
+```
+
+```{r}
+# Eliminate near zero-variance variables.
+(nzv_metrics <- nearZeroVar(mm, saveMetrics=TRUE))
+nzv_cnt <- sum(nzv_metrics$nzv)
+print(paste("Near zero-variance vars to eliminate:", nzv_cnt))
+if (nzv_cnt) {
+  print(colnames(mm[, nzv_metrics$nzv]))
+  mm <- mm[, !nzv_metrics$nzv]
+}
+
+# Eliminate linearly correlated predictors.
+combo_info <- findLinearCombos(mm)
+combo_cnt <- length(combo_info$remove)
+print(paste("Linearly corr. combos vars to eliminate:", combo_cnt))
+if (combo_cnt) {
+  print(colnames(mm[, combo_info$remove]))
+  mm <- mm[, -combo_info$remove]
+}
+```
+
+```{r}
+df <- cbind.data.frame(is_satisfied=df$is_satisfied, mm)
+colnames(df) <- make.names(colnames(df))
+dim(df)
+summary(df)
+```
+
+## Data Partitions
+
+Partition the data into training and testing sets.
+
+```{r}
+#set.seed(555)
+set.seed(123)
+in_train <- createDataPartition(
+  y = df$is_satisfied,
+  p = .6,
+  list = FALSE
+)
+training <- df[in_train,]
+summary(training$is_satisfied)
+testing <- df[-in_train,]
+summary(testing$is_satisfied)
+```
+
+# PCA
+
+```{r}
+# blueprint <- recipe(is_satisfied ~ ., data = training) %>%
+#   step_center(all_numeric()) %>%
+#   step_scale(all_numeric()) %>%
+#   step_pca(all_numeric(), threshold = .10)
+# prepare <- prep(blueprint, training = training)
+# baked_train <- bake(prepare, new_data = training)
+```
+
+# Bayesian
+
+```{r}
+model_fit = train(
+  is_satisfied~.,
+  data = training,
+  method = "superpc",
+  #preProc = "pca",
+  #trControl = trainControl(method="LOOCV")
+)
+
+(model_fit)
+confusionMatrix(predict(model_fit, training), training$is_satisfied)
+(tidy(model_fit))
+```
+```{r}
+confusionMatrix(predict(model_fit, testing), testing$is_satisfied)
+```
+
+# Classification Tree
+
+```{r}
+# tree_fit = train(
+#   is_satisfied~.,
+#   data = training,
+#   method = "rpart",
+#   trControl = trainControl(method = "cv", classProbs=TRUE)
+# )
+
+# tuneGrid <- expand.grid(.mtry = c(1 : 10))
+# tree_fit = train(
+#   is_satisfied~.,
+#   data = training,
+#   importance = TRUE,
+#   method = "rf",
+#   trControl = trainControl(method = "cv", classProbs=TRUE),
+#   tuneGrid = tuneGrid
+# )
+
+tune_grid <- expand.grid(cp = seq(0.005))
+tree_fit = train(
+  is_satisfied~.,
+  data = training,
+  method = "rpart",
+  #trControl = trainControl(method = "cv", classProbs=TRUE),
+  tuneGrid = tune_grid
+)
+
+(tree_fit)
+```
+
+```{r}
+#printcp(tree_fit$finalModel)
+```
+
+```{r}
+rpart.plot(tree_fit$finalModel)
+#fancyRpartPlot(tree_fit$finalModel)
+
+#plot(tree_fit$finalModel)
+```
+
+```{r}
+confusionMatrix(predict(tree_fit, training), training$is_satisfied)
+```
+
+```{r}
+confusionMatrix(predict(tree_fit, testing), testing$is_satisfied)
+```
+
+# Binary Logistic Regression
+
+## Training
+
+```{r}
+set.seed(1)
+
+# define training control
+train_control <- trainControl(method = "LOOCV")
+train_control <- trainControl(method = "cv")
+
+# train the model on training set
+glm_fit <- train(
+  is_satisfied~.,
+  data = training,
+  trControl = train_control,
+  method = "glm",
+  family=binomial()
+)
+
+(glm_fit)
+summary(glm_fit)
+```
+
+```{r}
+glm_classes <- predict(glm_fit, newdata = training)
+str(glm_classes)
+
+glm_probs <- predict(glm_fit, newdata = training, type = "prob")
+head(glm_probs)
+```
+
+```{r}
+confusionMatrix(data = glm_classes, training$is_satisfied)
+```
+
+## Testing
+
+```{r}
+glm_classes <- predict(glm_fit, newdata = testing)
+str(glm_classes)
+
+glm_probs <- predict(glm_fit, newdata = testing, type = "prob")
+head(glm_probs)
+```
+
+```{r}
+confusionMatrix(data = glm_classes, testing$is_satisfied)
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```
