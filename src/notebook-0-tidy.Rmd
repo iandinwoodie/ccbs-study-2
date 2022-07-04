@@ -394,7 +394,8 @@ Drop entries where the sum of ranks for an entry does not match the expected
 value.
 
 ```{r}
-rank_cols <- colnames(df %>% select(contains("rank") & !contains("revised")))
+rank_cols <- colnames(
+  df %>% dplyr::select(contains("rank") & !contains("revised")))
 
 rank_validator <- function(row) {
   cnt <- vector(mode="integer", length=7)
@@ -411,8 +412,16 @@ df <- df %>%
   mutate(is_rank_valid = rank_validator(.data)) %>%
   ungroup() %>%
   filter(is_rank_valid) %>%
-  select(-is_rank_valid)
-stopifnot(identical(dim(df)+0, c(1411, 28))) # Verify expected dim.
+  dplyr::select(-is_rank_valid)
+stopifnot(identical(dim(df)+0, c(1411, 28))) # Verify 132 entries dropped.
+```
+
+## Drop Entries Missing Required Data
+
+```{r}
+df <- df %>%
+  filter(!is.na(is_male))
+stopifnot(identical(dim(df)+0, c(1405, 28))) # Verify 6 entries dropped.
 ```
 
 ## Verify Unique Entries
@@ -423,7 +432,7 @@ Check that all (owner, dog) entry pairs are unique.
 duplicates <- df %>%
   dplyr::count(owner_id, dog_name) %>%
   filter(n>1)
-stopifnot(identical(dim(duplicates)+0, c(0, 3))) # Verify expected dim.
+stopifnot(identical(dim(duplicates)+0, c(0, 3))) # Verify no duplicates.
 ```
 
 ## Summary
