@@ -3,6 +3,11 @@ title: "Tidying the Study Data"
 author: "Ian Dinwoodie"
 date: "`r Sys.Date()`"
 output: html_document
+knit: (function(inputFile, encoding) {
+      out_dir <- "../results";
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        output_dir=file.path(dirname(inputFile), out_dir))})
 ---
 
 ```{r setup, include=FALSE}
