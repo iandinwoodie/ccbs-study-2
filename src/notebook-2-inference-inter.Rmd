@@ -1,0 +1,553 @@
+---
+title: "Statistical Inference"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(MASS)
+library(caret)
+library(car)
+library(performance)
+
+knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
+```
+
+# Preparing the Data
+
+## Loading the Tidy Data
+
+Load the tidy data from disk.
+
+```{r}
+df <- readRDS('../data/processed/tidy.Rds')
+stopifnot(identical(dim(df)+0, c(1537, 29)))
+str(df, list.len=5)
+```
+
+## Drop/Rename/Reorder Columns
+
+Drop or adjust (rename/reorder) columns.
+
+```{r}
+old_names <- c(
+  colnames(df %>% dplyr::select(contains("rank") & !contains("revised"))),
+  "time_thinking", "primary_motivation", "acquisition_source",
+  "is_living_with_dog")
+new_names <- c(
+  "ch.age", "ch.appearance", "ch.breed", "ch.compatability", "ch.personality",
+  "ch.size", "ch.trainability", "think_len", "motive", "source",
+  "is_with_dog")
+
+df <- df %>%
+  dplyr::rename_with(~ new_names, all_of(old_names)) %>%
+  dplyr::select(
+    -owner_id,
+    -dog_name,
+    -met_expectations,
+    -time_together_len,
+    -curr_dog_location,
+    -is_consider_another_dog,
+    -is_with_dog,
+    -contains("revised"),
+    -owner_gender
+  ) %>%
+  dplyr::relocate(is_owner_male, .before = everything()) %>%
+  dplyr::relocate(owner_age , .after=is_owner_male) %>%
+  dplyr::relocate(is_satisfied, .after = last_col()) %>%
+  tidyr::drop_na()
+
+rm(old_names, new_names)
+dim(df)
+summary(df)
+stopifnot(identical(dim(df)+0, c(1537, 13)))
+```
+
+# Preprocessing
+
+## Rule of Ten
+
+We start by identifying any "rule of ten" violations:
+
+```{r}
+table(df$is_satisfied, df$is_owner_male)
+```
+
+```{r}
+table(df$is_satisfied, df$think_len)
+```
+
+```{r}
+table(df$is_satisfied, df$motive)
+```
+
+We see violations for motives `protection` and `social`.
+
+```{r}
+table(df$is_satisfied, df$source)
+```
+
+We see violations for motives `protection` and `social` and for sources
+`foreign` and `found`. These columns will need to be dropped from the
+preprocessed data.
+
+## Establish Reference Levels
+
+```{r}
+df <- df %>%
+  dplyr::mutate(motive = forcats::fct_relevel(motive, "companionship")) %>%
+  dplyr::mutate(source = forcats::fct_relevel(source, "pet_shop"))
+summary(df)
+```
+
+## Create Preprocessed Data
+
+Create dummy variables.
+
+```{r}
+# Reference: https://bookdown.org/rehk/stm1001_dsm_introduction_to_machine_learning_in_r/machine-learning-in-r-using-the-caret-package.html
+dummies <- caret::dummyVars(is_satisfied ~ ., data = df, fullRank = T)
+df_pp <- cbind(as_tibble(predict(dummies, newdata = df)),
+               is_satisfied=df$is_satisfied)
+df_pp <- df_pp %>%
+  dplyr::rename(is_owner_male=is_owner_maleTRUE) %>%
+  # Drop rule of ten violations.
+  dplyr::select(
+    -c(motive.protection, motive.social, source.found, source.foreign))
+head(df_pp)
+```
+
+Check for near-zero variance variables.
+
+```{r}
+(nzv_metrics <- caret::nearZeroVar(df_pp, saveMetrics=TRUE))
+nzv_cnt <- sum(nzv_metrics$nzv)
+print(paste("Warning:", nzv_cnt, "near-zero variance vars. found"))
+if (nzv_cnt) {
+  print(colnames(df_pp[, nzv_metrics$nzv]))
+}
+```
+
+Check for linearly correlated predictors.
+
+```{r}
+combo_info <- caret::findLinearCombos(
+  df_pp %>% dplyr::select(-contains("ch."), -is_satisfied))
+combo_cnt <- length(combo_info$remove)
+print(paste("Linearly corr. combos vars to examine:", combo_cnt))
+print(paste("Warning:", combo_cnt, "linearly corr. combos vars. found"))
+if (combo_cnt) {
+  print(colnames(df_pp)[combo_info$remove])
+}
+```
+
+## Modified
+
+Instead of discarding the near-zero variance variables, we collapse fields or
+portions of fields and check to see if the diagnostics are improved.
+
+```{r}
+# dummies <- caret::dummyVars(is_satisfied ~ ., data = df2, fullRank=T)
+# df_pp <- cbind(as_tibble(predict(dummies, newdata = df2)),
+#                is_satisfied=df2$is_satisfied)
+# df_pp <- df_pp %>%
+#   dplyr::rename(is_owner_male=is_owner_maleTRUE)
+# head(df_pp)
+# 
+# (nzv_metrics <- caret::nearZeroVar(df_pp, saveMetrics=TRUE))
+# nzv_cnt <- sum(nzv_metrics$nzv)
+# print(paste("Warning:", nzv_cnt, "near-zero variance vars. found"))
+# if (nzv_cnt) {
+#   print(colnames(df_pp[, nzv_metrics$nzv]))
+# }
+```
+
+Check for linearly correlated predictors.
+
+```{r}
+# combo_info <- caret::findLinearCombos(
+#   df_pp %>% dplyr::select(-contains("ch."), -is_satisfied))
+# combo_cnt <- length(combo_info$remove)
+# print(paste("Linearly corr. combos vars to examine:", combo_cnt))
+# print(paste("Warning:", combo_cnt, "linearly corr. combos vars. found"))
+# if (combo_cnt) {
+#   print(colnames(df_pp)[combo_info$remove])
+# }
+```
+
+```{r}
+str(df_pp)
+```
+
+# Models
+
+## Null Model
+
+```{r}
+glm_fit_null <- glm(is_satisfied~1, df_pp, family="binomial")
+summary(glm_fit_null)
+
+(r2_null <- performance::r2_nagelkerke(glm_fit_null))
+```
+
+## Background Variables
+
+```{r}
+df_back <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age, contains("think_len."))
+summary(df_back)
+```
+
+```{r}
+set.seed(1)
+glm_fit_back <- glm(is_satisfied ~ ., df_back, family="binomial")
+summary(glm_fit_back)
+
+get_performance_metrics <- function(fit, r2_prev) {
+  r2_curr = performance::r2_nagelkerke(fit)
+  print(r2_curr)
+  print(paste("Delta R^2:", r2_curr-r2_prev))
+  print(performance::performance_hosmer(fit))
+  return(r2_curr)
+}
+
+r2_back <- get_performance_metrics(glm_fit_back, r2_null)
+```
+
+```{r}
+(vif(glm_fit_back))
+```
+
+```{r}
+bs_table <- function(fit, data) {
+  df_results <- broom::tidy(fit, conf.int=TRUE, exponentiate=TRUE)
+  
+  glm_est <- function(split, ...) {
+    glm(fit$formula, data = rsample::analysis(split), family="binomial") %>%
+      tidy()
+  }
+  
+  set.seed(1)
+  conf_ints <- rsample::bootstraps(data, 10000, apparent = TRUE) %>%
+    dplyr::mutate(results = map(splits, glm_est)) %>%
+    rsample::int_bca(results, .fn = glm_est) %>%
+    dplyr::mutate_at(c(".estimate", ".lower", ".upper"), ~ exp(.)) %>%
+    dplyr::select(term, .lower, .upper) %>%
+    dplyr::rename(bs.low=.lower, bs.high=.upper)
+  
+  df_results <- merge(df_results, conf_ints, by="term")
+  df_results$p.value <- p.adjust(df_results$p.value, method='fdr')
+  df_results$sig <- ''
+  df_results[df_results$p.value <= .05, 'sig'] <- '*'
+  df_results[df_results$p.value <= .01, 'sig'] <- '**'
+  df_results[df_results$p.value <= .001, 'sig'] <- '***'
+  for (i in 1:nrow(df_results)) {
+    if (is.na(df_results[i, 'bs.low']) | is.na(df_results[i, 'bs.high'])) next
+    if ((df_results[i, 'bs.low'] <= 1) & (df_results[i, 'bs.high'] >= 1)) {
+      df_results[i, 'sig'] <- ''
+    }
+  }
+  df_results <- df_results %>%
+    dplyr::mutate(dplyr::across(where(is.numeric), round, 3))
+  return(knitr::kable(df_results))
+}
+
+bs_table(glm_fit_back, df_back)
+```
+
+```{r}
+anova(glm_fit_null, glm_fit_back, test="LRT")
+```
+
+## Source
+
+```{r}
+df_source <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age, contains("think_len."),
+                contains("source."))
+summary(df_source)
+```
+
+```{r}
+set.seed(1)
+glm_fit_source <- glm(is_satisfied ~ ., df_source, family="binomial")
+summary(glm_fit_source)
+
+r2_source <- get_performance_metrics(glm_fit_source, r2_back)
+```
+
+```{r}
+(vif(glm_fit_source))
+```
+
+```{r}
+bs_table(glm_fit_source, df_source)
+```
+
+```{r}
+anova(glm_fit_back, glm_fit_source, test="LRT")
+```
+
+## Motive
+
+```{r}
+df_motive <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age,
+                contains("think_len."), contains("source."), contains("motive."))
+summary(df_motive)
+```
+
+```{r}
+set.seed(1)
+glm_fit_motive <- glm(is_satisfied~., df_motive, family="binomial")
+summary(glm_fit_motive)
+
+r2_motive <- get_performance_metrics(glm_fit_motive, r2_source)
+```
+
+```{r}
+(vif(glm_fit_motive))
+```
+
+```{r}
+bs_table(glm_fit_motive, df_motive)
+```
+
+```{r}
+anova(glm_fit_source, glm_fit_motive, test="LRT")
+```
+
+## Characteristics
+
+### Age
+
+```{r}
+char <- "ch.age"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age,
+                contains("think_len."), contains("source."), contains("motive."),
+                !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~., df_char, family="binomial")
+summary(glm_fit_char)
+
+r2_char <- get_performance_metrics(glm_fit_char, r2_motive)
+```
+
+```{r}
+(vif(glm_fit_char))
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Appearance
+
+```{r}
+char <- "ch.appearance"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age,
+                contains("think_len."), contains("source."), contains("motive."),
+                !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~., df_char, family="binomial")
+summary(glm_fit_char)
+
+r2_char <- get_performance_metrics(glm_fit_char, r2_motive)
+```
+
+```{r}
+(vif(glm_fit_char))
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Breed
+
+```{r}
+char <- "ch.breed"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age,
+                contains("think_len."), contains("source."), contains("motive."),
+                !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~., df_char, family="binomial")
+summary(glm_fit_char)
+
+r2_char <- get_performance_metrics(glm_fit_char, r2_motive)
+```
+
+```{r}
+(vif(glm_fit_char))
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Compatability
+
+```{r}
+char <- "ch.compatability"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age,
+                contains("think_len."), contains("source."), contains("motive."),
+                !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~., df_char, family="binomial")
+summary(glm_fit_char)
+
+r2_char <- get_performance_metrics(glm_fit_char, r2_motive)
+```
+
+```{r}
+(vif(glm_fit_char))
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Personality
+
+```{r}
+char <- "ch.personality"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age,
+                contains("think_len."), contains("source."), contains("motive."),
+                !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~., df_char, family="binomial")
+summary(glm_fit_char)
+
+r2_char <- get_performance_metrics(glm_fit_char, r2_motive)
+```
+
+```{r}
+(vif(glm_fit_char))
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Size
+
+```{r}
+char <- "ch.size"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age,
+                contains("think_len."), contains("source."), contains("motive."),
+                !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~., df_char, family="binomial")
+summary(glm_fit_char)
+
+r2_char <- get_performance_metrics(glm_fit_char, r2_motive)
+```
+
+```{r}
+(vif(glm_fit_char))
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+### Trainability
+
+```{r}
+char <- "ch.trainability"
+df_char <- df_pp %>%
+  dplyr::select(is_satisfied, is_owner_male, owner_age,
+                contains("think_len."), contains("source."), contains("motive."),
+                !!!char)
+summary(df_char)
+```
+
+```{r}
+set.seed(1)
+glm_fit_char <- glm(is_satisfied~., df_char, family="binomial")
+summary(glm_fit_char)
+
+r2_char <- get_performance_metrics(glm_fit_char, r2_motive)
+```
+
+```{r}
+(vif(glm_fit_char))
+```
+
+```{r}
+bs_table(glm_fit_char, df_char)
+```
+
+```{r}
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```
+
+# Cleanup
+
+```{r}
+rm(list = ls())
+```

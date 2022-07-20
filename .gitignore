@@ -31,3 +31,8 @@ venv/
 .Rhistory
 .Rproj.user
 .Ruserdata
+
+### Microsoft Office ###
+
+# Temporary files
+~$*

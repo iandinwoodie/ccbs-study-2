@@ -1,6 +1,6 @@
 owner_id
 zip_code
-sex
-age
+owner_gender
+owner_age
 datetime
 internal_logic_1

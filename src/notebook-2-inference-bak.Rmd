@@ -10,7 +10,7 @@ library(tidyverse)
 library(tidymodels)
 library(MASS)
 library(caret)
-library(car)
+
 
 knitr::opts_chunk$set(echo=TRUE)
 set.seed(1)
@@ -24,7 +24,7 @@ Load the tidy data from disk.
 
 ```{r}
 df <- readRDS('../data/processed/tidy.Rds')
-#stopifnot(identical(dim(df)+0, c(1405, 28)))
+#stopifnot(identical(dim(df)+0, c(1603, 34)))
 str(df, list.len=5)
 ```
 
@@ -57,6 +57,10 @@ df <- df %>%
   relocate(is_male, .before = everything()) %>%
   relocate(owner_age, .after=is_male) %>%
   relocate(is_satisfied, .after = last_col()) %>%
+  mutate(is_satisfied = factor(
+    ifelse(is_satisfied==TRUE, "yes", "no"),
+    levels=c("yes", "no")
+  )) %>%
   drop_na()
 
 rm(old_names, new_names)
@@ -66,7 +70,7 @@ summary(df)
 
 # Preprocessing
 
-Create dummy variables.
+Generate dummy variables.
 
 ```{r}
 # Reference: https://bookdown.org/rehk/stm1001_dsm_introduction_to_machine_learning_in_r/machine-learning-in-r-using-the-caret-package.html
@@ -83,57 +87,26 @@ head(df_pp)
 Check for near-zero variance variables.
 
 ```{r}
+# Eliminate near zero-variance variables.
+#(nzv_metrics <- nearZeroVar(df_pp, freqCut=25, saveMetrics=TRUE))
 (nzv_metrics <- nearZeroVar(df_pp, saveMetrics=TRUE))
 nzv_cnt <- sum(nzv_metrics$nzv)
-print(paste("Warning:", nzv_cnt, "near-zero variance vars. found"))
+print(paste("Near zero-variance vars to eliminate:", nzv_cnt))
 if (nzv_cnt) {
   print(colnames(df_pp[, nzv_metrics$nzv]))
+  df_pp <- df_pp[, !nzv_metrics$nzv]
 }
 ```
 
-Instead of discarding the near-zero variance variables, we collapse fields or
-portions of fields and check to see if the diagnostics are improved.
-
 ```{r}
-df2 <- df %>%
-  mutate(time = ifelse(time %in% c("lt_one_wk", "one_wk_to_six_mo"), T, F)) %>%
-  mutate(
-    motive = fct_collapse(
-      motive,
-      other=c("protection", "social", "family")
-    )
-  ) %>%
-  filter(source != "pet_shop", source != "foreign") %>%
-  droplevels()
-
-dummies <- dummyVars(is_satisfied ~ ., data = df2, fullRank = F)
-df_pp <- cbind(as_tibble(predict(dummies, newdata = df2)),
-               is_satisfied=df2$is_satisfied)
-df_pp <- df_pp %>%
-  dplyr::select(-is_maleFALSE, -timeFALSE) %>%
-  rename(is_male=is_maleTRUE, time=timeTRUE)
-head(df_pp)
-
-(nzv_metrics <- nearZeroVar(df_pp, saveMetrics=TRUE))
-nzv_cnt <- sum(nzv_metrics$nzv)
-print(paste("Warning:", nzv_cnt, "near-zero variance vars. found"))
-if (nzv_cnt) {
-  print(colnames(df_pp[, nzv_metrics$nzv]))
-}
-```
-
-Check for linearly correlated predictors.
-
-```{r}
-df_pp <- df_pp %>% dplyr::select(-motive.working)
-
+# Eliminate linearly correlated predictors.
 combo_info <- findLinearCombos(
   df_pp %>% dplyr::select(-contains("ch."), -is_satisfied))
 combo_cnt <- length(combo_info$remove)
-print(paste("Linearly corr. combos vars to examine:", combo_cnt))
-print(paste("Warning:", combo_cnt, "linearly corr. combos vars. found"))
+print(paste("Linearly corr. combos vars to eliminate:", combo_cnt))
 if (combo_cnt) {
   print(colnames(df_pp)[combo_info$remove])
+  #df_pp <- df_pp[, -combo_info$remove]
 }
 ```
 
@@ -147,7 +120,7 @@ str(df_pp)
 
 ```{r}
 df_back <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time)
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."))
 summary(df_back)
 ```
 
@@ -155,12 +128,7 @@ summary(df_back)
 set.seed(1)
 glm_fit_back <- glm(is_satisfied~.-1, df_back, family="binomial")
 summary(glm_fit_back)
-
-get_mcfaddens_rsquared <- function(fit) {
-  return(with(summary(fit), 1 - (deviance/null.deviance)))
-}
-r2_back <- get_mcfaddens_rsquared(glm_fit_back)
-print(paste("R^2:", round(r2_back, 4)))
+with(summary(glm_fit_back), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 ```{r}
@@ -173,7 +141,7 @@ bs_table <- function(fit, data) {
   }
   
   set.seed(1)
-  conf_ints <- bootstraps(data, 10000, apparent = TRUE) %>%
+  conf_ints <- bootstraps(data, 1000, apparent = TRUE) %>%
     mutate(results = map(splits, glm_est)) %>%
     int_bca(results, .fn = glm_est) %>%
     mutate_at(c(".estimate", ".lower", ".upper"), ~ exp(.)) %>%
@@ -192,18 +160,42 @@ bs_table <- function(fit, data) {
       df_results[i, 'sig'] <- ''
     }
   }
-  df_results <- df_results %>% mutate(across(where(is.numeric), round, 3))
   return(knitr::kable(df_results))
 }
 
 bs_table(glm_fit_back, df_back)
 ```
 
+## Time
+
+```{r}
+df_time <- df_pp %>%
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."))
+summary(df_time)
+```
+
+```{r}
+set.seed(1)
+glm_fit_time <- glm(is_satisfied~.-1, df_time, family="binomial")
+summary(glm_fit_time)
+with(summary(glm_fit_time), 1 - deviance/null.deviance) # McFadden's pseudo R^2
+```
+
+```{r}
+bs_table(glm_fit_time, df_time)
+```
+
+```{r}
+anova(glm_fit_back, glm_fit_time, test="Chisq")
+```
+
 ## Motive
 
 ```{r}
 df_motive <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."))
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."))
 summary(df_motive)
 ```
 
@@ -211,10 +203,7 @@ summary(df_motive)
 set.seed(1)
 glm_fit_motive <- glm(is_satisfied~.-1, df_motive, family="binomial")
 summary(glm_fit_motive)
-
-r2_motive <- get_mcfaddens_rsquared(glm_fit_motive)
-print(paste("R^2:", round(r2_motive, 4)))
-print(paste("Delta R^2:", round(r2_motive - r2_back, 4)))
+with(summary(glm_fit_motive), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 ```{r}
@@ -222,34 +211,7 @@ bs_table(glm_fit_motive, df_motive)
 ```
 
 ```{r}
-anova(glm_fit_back, glm_fit_motive, test="LRT")
-```
-
-## Source
-
-```{r}
-df_source <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."),
-                contains("source."))
-summary(df_source)
-```
-
-```{r}
-set.seed(1)
-glm_fit_source <- glm(is_satisfied~.-1, df_source, family="binomial")
-summary(glm_fit_source)
-
-r2_source <- get_mcfaddens_rsquared(glm_fit_source)
-print(paste("R^2:", round(r2_source, 4)))
-print(paste("Delta R^2:", round(r2_source - r2_motive, 4)))
-```
-
-```{r}
-bs_table(glm_fit_source, df_source)
-```
-
-```{r}
-anova(glm_fit_motive, glm_fit_source, test="Chisq")
+anova(glm_fit_time, glm_fit_motive, test="Chisq")
 ```
 
 ## Characteristics
@@ -259,8 +221,8 @@ anova(glm_fit_motive, glm_fit_source, test="Chisq")
 ```{r}
 char <- "ch.age"
 df_char <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."),
-                contains("source."), !!!char)
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
 summary(df_char)
 ```
 
@@ -268,18 +230,15 @@ summary(df_char)
 set.seed(1)
 glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
 summary(glm_fit_char)
-
-r2_char <- get_mcfaddens_rsquared(glm_fit_char)
-print(paste("R^2:", round(r2_char, 4)))
-print(paste("Delta R^2:", round(r2_char - r2_source, 4)))
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 ```{r}
-#bs_table(glm_fit_char, df_char)
+bs_table(glm_fit_char, df_char)
 ```
 
 ```{r}
-anova(glm_fit_source, glm_fit_char, test="Chisq")
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
 ```
 
 ### Appearance
@@ -287,8 +246,8 @@ anova(glm_fit_source, glm_fit_char, test="Chisq")
 ```{r}
 char <- "ch.appearance"
 df_char <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."),
-                contains("source."), !!!char)
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
 summary(df_char)
 ```
 
@@ -296,18 +255,15 @@ summary(df_char)
 set.seed(1)
 glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
 summary(glm_fit_char)
-
-r2_char <- get_mcfaddens_rsquared(glm_fit_char)
-print(paste("R^2:", round(r2_char, 4)))
-print(paste("Delta R^2:", round(r2_char - r2_source, 4)))
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 ```{r}
-#bs_table(glm_fit_char, df_char)
+bs_table(glm_fit_char, df_char)
 ```
 
 ```{r}
-anova(glm_fit_source, glm_fit_char, test="Chisq")
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
 ```
 
 ### Breed
@@ -315,8 +271,8 @@ anova(glm_fit_source, glm_fit_char, test="Chisq")
 ```{r}
 char <- "ch.breed"
 df_char <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."),
-                contains("source."), !!!char)
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
 summary(df_char)
 ```
 
@@ -324,18 +280,15 @@ summary(df_char)
 set.seed(1)
 glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
 summary(glm_fit_char)
-
-r2_char <- get_mcfaddens_rsquared(glm_fit_char)
-print(paste("R^2:", round(r2_char, 4)))
-print(paste("Delta R^2:", round(r2_char - r2_source, 4)))
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 ```{r}
-#bs_table(glm_fit_char, df_char)
+bs_table(glm_fit_char, df_char)
 ```
 
 ```{r}
-anova(glm_fit_source, glm_fit_char, test="Chisq")
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
 ```
 
 ### Compatability
@@ -343,8 +296,8 @@ anova(glm_fit_source, glm_fit_char, test="Chisq")
 ```{r}
 char <- "ch.compatability"
 df_char <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."),
-                contains("source."), !!!char)
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
 summary(df_char)
 ```
 
@@ -352,18 +305,15 @@ summary(df_char)
 set.seed(1)
 glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
 summary(glm_fit_char)
-
-r2_char <- get_mcfaddens_rsquared(glm_fit_char)
-print(paste("R^2:", round(r2_char, 4)))
-print(paste("Delta R^2:", round(r2_char - r2_source, 4)))
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 ```{r}
-#bs_table(glm_fit_char, df_char)
+bs_table(glm_fit_char, df_char)
 ```
 
 ```{r}
-anova(glm_fit_source, glm_fit_char, test="Chisq")
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
 ```
 
 ### Personality
@@ -371,8 +321,8 @@ anova(glm_fit_source, glm_fit_char, test="Chisq")
 ```{r}
 char <- "ch.personality"
 df_char <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."),
-                contains("source."), !!!char)
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
 summary(df_char)
 ```
 
@@ -380,10 +330,7 @@ summary(df_char)
 set.seed(1)
 glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
 summary(glm_fit_char)
-
-r2_char <- get_mcfaddens_rsquared(glm_fit_char)
-print(paste("R^2:", round(r2_char, 4)))
-print(paste("Delta R^2:", round(r2_char - r2_source, 4)))
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 
@@ -392,7 +339,7 @@ bs_table(glm_fit_char, df_char)
 ```
 
 ```{r}
-anova(glm_fit_source, glm_fit_char, test="Chisq")
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
 ```
 
 ### Size
@@ -400,8 +347,8 @@ anova(glm_fit_source, glm_fit_char, test="Chisq")
 ```{r}
 char <- "ch.size"
 df_char <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."),
-                contains("source."), !!!char)
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
 summary(df_char)
 ```
 
@@ -409,18 +356,15 @@ summary(df_char)
 set.seed(1)
 glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
 summary(glm_fit_char)
-
-r2_char <- get_mcfaddens_rsquared(glm_fit_char)
-print(paste("R^2:", round(r2_char, 4)))
-print(paste("Delta R^2:", round(r2_char - r2_source, 4)))
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 ```{r}
-#bs_table(glm_fit_char, df_char)
+bs_table(glm_fit_char, df_char)
 ```
 
 ```{r}
-anova(glm_fit_source, glm_fit_char, test="Chisq")
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
 ```
 
 ### Trainability
@@ -428,8 +372,8 @@ anova(glm_fit_source, glm_fit_char, test="Chisq")
 ```{r}
 char <- "ch.trainability"
 df_char <- df_pp %>%
-  dplyr::select(is_satisfied, is_male, owner_age, time, contains("motive."),
-                contains("source."), !!!char)
+  dplyr::select(is_satisfied, is_male, owner_age, contains("source."),
+                contains("time."), contains("motive."), !!!char)
 summary(df_char)
 ```
 
@@ -437,18 +381,15 @@ summary(df_char)
 set.seed(1)
 glm_fit_char <- glm(is_satisfied~.-1, df_char, family="binomial")
 summary(glm_fit_char)
-
-r2_char <- get_mcfaddens_rsquared(glm_fit_char)
-print(paste("R^2:", round(r2_char, 4)))
-print(paste("Delta R^2:", round(r2_char - r2_source, 4)))
+with(summary(glm_fit_char), 1 - deviance/null.deviance) # McFadden's pseudo R^2
 ```
 
 ```{r}
-#bs_table(glm_fit_char, df_char)
+bs_table(glm_fit_char, df_char)
 ```
 
 ```{r}
-anova(glm_fit_source, glm_fit_char, test="Chisq")
+anova(glm_fit_motive, glm_fit_char, test="Chisq")
 ```
 
 # Save Session Info

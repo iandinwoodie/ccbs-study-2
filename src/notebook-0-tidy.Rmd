@@ -94,6 +94,13 @@ df_dog <- df_dog %>%
       rescue="Shelter/Rescue"
     )
   ) %>%
+  dplyr::mutate(
+    acquisition_source = forcats::fct_collapse(
+      acquisition_source,
+      #rescue=c("found"),
+      pet_shop=c("online")
+    )
+  ) %>%
   mutate(
     revised_acquisition_source = fct_recode(
       revised_acquisition_source,
@@ -104,6 +111,13 @@ df_dog <- df_dog %>%
       pet_shop="Local pet shop",
       online="Online",
       rescue="Shelter/Rescue"
+    )
+  ) %>%
+  dplyr::mutate(
+    revised_acquisition_source = forcats::fct_collapse(
+      revised_acquisition_source,
+      #rescue=c("found"),
+      pet_shop=c("online")
     )
   ) %>%
   mutate(
@@ -117,7 +131,7 @@ df_dog <- df_dog %>%
       other_level="other"
     )
   ) %>%
-    mutate(
+  mutate(
     met_expectations = factor(
       fct_collapse(
         met_expectations,
@@ -220,8 +234,8 @@ by Typeform.
 
 ```{r}
 df_owner <- df_owner %>%
-  mutate(sex = as.factor(sex)) %>%
-  mutate(age = as.numeric(age)) %>%
+  mutate(owner_gender = as.factor(owner_gender)) %>%
+  mutate(owner_age = as.numeric(owner_age)) %>%
   mutate(datetime = as.POSIXct(strptime(datetime,"%m/%d/%Y %H:%M:%S"))) %>%
   dplyr::select(-c(zip_code, internal_logic_1))
 
@@ -355,73 +369,74 @@ df <- df %>%
   dplyr::select(-contains('important_char'))
 ```
 
-```{r}
-# df <- df %>%
-#   rowwise() %>%
-#     mutate(rank_sum = sum(c_across(age_rank:trainability_rank))) %>%
-#   ungroup() %>%
-#   filter(rank_sum == 28) %>%
-#   dplyr::select(-rank_sum)
-```
-
-```{r}
-#df <- df %>% mutate_at(as.vector(char_map), ordered)
-```
-
 ### Generate Convenience Columns
 
 ```{r}
 df <- df %>%
   mutate(is_satisfied = (met_expectations == "yes")) %>%
-  mutate(is_male = (sex == "male")) %>%
-  dplyr::select(-sex)
+  mutate(is_owner_male = (owner_gender == "male"))
 ```
 
-## Drop Low Ages
+
+## Inclusion Critera
+
+Count the number of owners before applying inclusion criteria.
+
+```{r}
+length(unique(df$owner_id))
+```
+
+Count the number of responses before applying inclusion criteria.
+
+```{r}
+dim(df)[1]
+```
+
+### Drop Low Ages
 
 For this study, we are only going to consider responses provided from adults;
 defined in the US persons aged 18 years or older.
 
 ```{r}
 df <- df %>%
-  filter(age >= 18)
-stopifnot(identical(dim(df)+0, c(1543, 28))) # Verify expected dim.
+  filter(owner_age >= 18)
+stopifnot(identical(dim(df)+0, c(1543, 29))) # Verify expected dim.
 ```
 
-## Drop Improperly Ranked 
+### Drop Improperly Ranked 
 
 Drop entries where the sum of ranks for an entry does not match the expected
 value.
 
 ```{r}
-rank_cols <- colnames(
-  df %>% dplyr::select(contains("rank") & !contains("revised")))
-
-rank_validator <- function(row) {
-  cnt <- vector(mode="integer", length=7)
-  for (col in rank_cols) {
-    rank <- row[[col]]
-    cnt[rank] = cnt[rank] + 1
-    if (cnt[rank] > 1) return(FALSE)
-  }
-  return(TRUE)
-}
-
-df <- df %>%
-  rowwise() %>%
-  mutate(is_rank_valid = rank_validator(.data)) %>%
-  ungroup() %>%
-  filter(is_rank_valid) %>%
-  dplyr::select(-is_rank_valid)
-stopifnot(identical(dim(df)+0, c(1411, 28))) # Verify 132 entries dropped.
+# rank_cols <- colnames(
+#   df %>% dplyr::select(contains("rank") & !contains("revised")))
+# 
+# rank_validator <- function(row) {
+#   cnt <- vector(mode="integer", length=7)
+#   for (col in rank_cols) {
+#     rank <- row[[col]]
+#     cnt[rank] = cnt[rank] + 1
+#     if (cnt[rank] > 1) return(FALSE)
+#   }
+#   return(TRUE)
+# }
+# 
+# df <- df %>%
+#   rowwise() %>%
+#   mutate(is_rank_valid = rank_validator(.data)) %>%
+#   ungroup() %>%
+#   filter(is_rank_valid) %>%
+#   dplyr::select(-is_rank_valid)
+# stopifnot(identical(dim(df)+0, c(1411, 28))) # Verify 132 entries dropped.
 ```
 
-## Drop Entries Missing Required Data
+### Drop Entries Missing Required Data
 
 ```{r}
 df <- df %>%
-  filter(!is.na(is_male))
-stopifnot(identical(dim(df)+0, c(1405, 28))) # Verify 6 entries dropped.
+  filter(!is.na(owner_gender))
+stopifnot(identical(dim(df)+0, c(1537, 29))) # Verify expected dim.
 ```
 
 ## Verify Unique Entries
@@ -442,7 +457,7 @@ Take a last look at the data before saving it to disk.
 ```{r}
 dim(df)
 summary(df)
-#stopifnot(identical(dim(df)+0, c(1405, 28))) # Verify expected dim.
+stopifnot(identical(dim(df)+0, c(1537, 29))) # Verify expected dim.
 ```
 
 # Saving the Tidy Data
