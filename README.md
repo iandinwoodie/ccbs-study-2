@@ -6,6 +6,7 @@
     <img src="https://img.shields.io/github/repo-size/iandinwoodie/ccbs-study-2" />
     <a href="https://github.com/iandinwoodie/ccbs-study-2/releases" alt="Latest Release">
         <img src="https://img.shields.io/github/v/tag/iandinwoodie/ccbs-study-2" /></a>
+    <a href="https://zenodo.org/badge/latestdoi/347491818"><img src="https://zenodo.org/badge/347491818.svg" alt="DOI"></a>
 </p>
 
 ---
