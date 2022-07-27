@@ -14,6 +14,14 @@
 Analysis repository for the paper titled _Factors Influencing Adoption of Pet
 Dogs and Eventual Owner Satisfaction_.
 
+## Citation
+
+This data set can be cited as follows:
+
+```txt
+Dinwoodie, I. R., Zotolla, V., & Dodman, N. H. (2022). ccbs-study-2 (Version 1.0.0) [Data set]. https://doi.org/10.5281/zenodo.6910622
+```
+
 ## Project Organization
 
 ```txt
