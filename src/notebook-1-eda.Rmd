@@ -24,8 +24,6 @@ devtools::install_github("vqv/ggbiplot")
 library(ggbiplot)
 devtools::install_github("kevinblighe/PCAtools")
 library(PCAtools)
-devtools::install_github("haleyjeppson/ggmosaic")
-library(ggmosaic)
 devtools::install_github("psyteachr/introdataviz")
 library(introdataviz)
 
@@ -101,6 +99,15 @@ df %>%
   dplyr::transmute(male_age=ifelse(is_owner_male==TRUE, owner_age, NA),
                    female_age=ifelse(is_owner_male==FALSE, owner_age, NA)) %>%
   summary()
+```
+
+Examine the distribution of ages split by adoption source.
+
+```{r}
+df %>%
+  dplyr::select(acquisition_source, owner_age) %>%
+  dplyr::group_by(acquisition_source) %>%
+  dplyr::summarise(min=min(owner_age), mean=mean(owner_age), max=max(owner_age))
 ```
 
 ```{r}
@@ -337,6 +344,37 @@ df %>%
   summary()
 ```
 
+## Dog Location by Satisfaction
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE) %>%
+  dplyr::count(curr_dog_location) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE & is_satisfied==TRUE) %>%
+  dplyr::count(curr_dog_location) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE & is_satisfied==FALSE) %>%
+  dplyr::count(curr_dog_location) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE & is_satisfied==FALSE)
+```
+
 # Data Exploration
 
 ## Numeric Correlations
@@ -550,16 +588,6 @@ table(df$primary_motivation, df$time_thinking)
 table(df$acquisition_source, df$time_thinking)
 ```
 
-## Mosiac Plots
-
-Plot of background variables to be used in model.
-
-```{r}
-#mosaic(~ owner_gender + primary_motivation + is_satisfied, data=df,
-#       highlighting = "is_satisfied", highlighting_fill = c("lightblue", "pink"),
-#       direction = c("h", "v", "v"))
-```
-
 ## Violin Plots
 
 ```{r}
@@ -587,7 +615,7 @@ df_long %>%
     scale_y_continuous(name = "Rank",
                        limits = c(1, 7),
                        breaks = seq(1, 7, 1))
-ggsave("fig-1-violin-plot.pdf")
+#ggsave("../results/fig-1-violin-plot.pdf")
 ```
 
 ## Ridge Plots
@@ -617,7 +645,7 @@ df_long %>%
     x = "Rank",
     y = "Characteristic",
   )
-ggsave("fig-1-ridgeline-plot.pdf")
+#ggsave("../results/fig-1-ridgeline-plot.pdf")
 ```
 ## Jitter Plots
 
@@ -631,6 +659,8 @@ df_long2 %>%
     geom_boxplot(aes(x=char2, y=rank,
                      group=interaction(char, Adoption)),
                  width=0.35, alpha=0.1) +
+    scale_y_continuous(breaks=c(1:7),
+                       labels=c(1:7)) +
     scale_x_continuous(breaks=unique(df_long2$char2[1:7])+.4,
                        labels=unique(df_long2$char)) +
     labs(
@@ -638,7 +668,7 @@ df_long2 %>%
       x = "Characteristic",
     ) +
     guides(colour = guide_legend(override.aes = list(alpha = 1)))
-ggsave("fig-1-jitter-plot.pdf")
+ggsave("../results/fig-1-jitter-plot.pdf", dpi=300)
 ```
 
 ## Box Plots
@@ -661,7 +691,7 @@ df_long2 %>%
       x = "Characteristic",
     ) +
     guides(colour = guide_legend(override.aes = list(alpha = 1)))
-ggsave("fig-1-box-plot.pdf")
+#ggsave("../results/fig-1-box-plot.pdf")
 ```
 
 ```{r}
@@ -672,7 +702,7 @@ df_long2 %>%
     y = "Rank",
     x = "Characteristic",
   )
-ggsave("fig-1-box-plot.pdf")
+#ggsave("../results/fig-1-box-plot.pdf")
 ```
 
 ## Nested Bar Chart

@@ -150,40 +150,6 @@ if (combo_cnt) {
 }
 ```
 
-## Modified
-
-Instead of discarding the near-zero variance variables, we collapse fields or
-portions of fields and check to see if the diagnostics are improved.
-
-```{r}
-# dummies <- caret::dummyVars(is_satisfied ~ ., data = df2, fullRank=T)
-# df_pp <- cbind(as_tibble(predict(dummies, newdata = df2)),
-#                is_satisfied=df2$is_satisfied)
-# df_pp <- df_pp %>%
-#   dplyr::rename(is_owner_male=is_owner_maleTRUE)
-# head(df_pp)
-# 
-# (nzv_metrics <- caret::nearZeroVar(df_pp, saveMetrics=TRUE))
-# nzv_cnt <- sum(nzv_metrics$nzv)
-# print(paste("Warning:", nzv_cnt, "near-zero variance vars. found"))
-# if (nzv_cnt) {
-#   print(colnames(df_pp[, nzv_metrics$nzv]))
-# }
-```
-
-Check for linearly correlated predictors.
-
-```{r}
-# combo_info <- caret::findLinearCombos(
-#   df_pp %>% dplyr::select(-contains("ch."), -is_satisfied))
-# combo_cnt <- length(combo_info$remove)
-# print(paste("Linearly corr. combos vars to examine:", combo_cnt))
-# print(paste("Warning:", combo_cnt, "linearly corr. combos vars. found"))
-# if (combo_cnt) {
-#   print(colnames(df_pp)[combo_info$remove])
-# }
-```
-
 ```{r}
 str(df_pp)
 ```
