@@ -1,0 +1,482 @@
+---
+title: "Tidying the Study Data"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document
+knit: (function(inputFile, encoding) {
+      out_dir <- "../results";
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        output_dir=file.path(dirname(inputFile), out_dir))})
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
+```
+
+# Dog Data Processing
+
+## Load Raw Data
+
+Load the raw dog data and verify its dimensions and structure. We expect to have
+1704 responses across 29 fields.
+
+```{r}
+df_dog <- read.csv('../data/raw/dogs.csv', header=TRUE, skipNul=TRUE,
+                   na.strings=c("","NA"))
+str(df_dog, list.len=5)
+stopifnot(identical(dim(df_dog)+0, c(1704, 29))) # Verify expected dim.
+```
+
+## Apply Readable Column Names
+
+The columns so that they are easier to work with.
+
+```{r}
+colnames(df_dog) <- readr::read_lines(
+  '../references/dog-readable-column-names.txt')
+```
+
+## Adjusting Data Types
+
+Set representative data types for each column. Additionally, the
+`internal_logic_*` columns can be dropped since their only purpose was for
+Typeform UI enhancement at the time of the survey.
+
+```{r}
+df_dog <- df_dog %>%
+  dplyr::select(-starts_with("internal_logic_")) %>%
+  mutate(dog_name = trimws(tolower(dog_name))) %>%
+  mutate_at(
+    c("is_living_with_dog", "is_consider_another_dog"),
+    as.logical
+  ) %>%
+  mutate_at(
+    c(
+      'primary_motivation',
+      'acquisition_source',
+      'important_char_1',
+      'important_char_2',
+      'important_char_3',
+      'important_char_4',
+      'important_char_5',
+      'important_char_6',
+      'curr_dog_location',
+      'revised_important_char_1',
+      'revised_important_char_2',
+      'revised_important_char_3',
+      'revised_important_char_4',
+      'revised_important_char_5',
+      'revised_important_char_6',
+      'revised_acquisition_source'
+    ),
+    as.factor
+  ) %>%
+  mutate(
+    primary_motivation = fct_collapse(
+      primary_motivation,
+      companionship=c("Companionship and affection"),
+      social=c("Social interaction"),
+      exercise=c("Exercise, adventure partner"),
+      protection=c("Protection"),
+      working=c("Working or sporting"),
+      family=c("Someone else in the home wanted a dog (e.g. kids, spouse)"),
+      for_other_pet=c("Companion for another dog or pet"),
+      other_level="other"
+    )
+  ) %>%
+  mutate(
+    acquisition_source = fct_recode(
+      acquisition_source,
+      foreign="Another country or island",
+      breeder="Breeder",
+      family_or_friend="Family member or friend",
+      found="Found roaming",
+      pet_shop="Local pet shop",
+      online="Online",
+      rescue="Shelter/Rescue"
+    )
+  ) %>%
+  dplyr::mutate(
+    acquisition_source = forcats::fct_collapse(
+      acquisition_source,
+      #rescue=c("found"),
+      pet_shop=c("online")
+    )
+  ) %>%
+  mutate(
+    revised_acquisition_source = fct_recode(
+      revised_acquisition_source,
+      foreign="Another country or island",
+      breeder="Breeder",
+      family_or_friend="Family member or friend",
+      found="Roaming",
+      pet_shop="Local pet shop",
+      online="Online",
+      rescue="Shelter/Rescue"
+    )
+  ) %>%
+  dplyr::mutate(
+    revised_acquisition_source = forcats::fct_collapse(
+      revised_acquisition_source,
+      #rescue=c("found"),
+      pet_shop=c("online")
+    )
+  ) %>%
+  mutate(
+    curr_dog_location = fct_collapse(
+      curr_dog_location,
+      rehomed=c("Rehomed"),
+      surrendered=c("Surrendered to a shelter/rescue"),
+      euthanized=c("Euthanized"),
+      lost=c("Ran away/got lost"),
+      died=c("Passed"),
+      other_level="other"
+    )
+  ) %>%
+  mutate(
+    met_expectations = factor(
+      fct_collapse(
+        met_expectations,
+        no=c("No, the dog was not a good match"),
+        partial=c("Partially, I accepted the dog and made it work",
+                  "Partially, I grew to love the dog over time"),
+        yes=c("Yes")
+      ),
+      ordered=T,
+      levels=c("no", "partial", "yes")
+    )
+  ) %>%
+  mutate_at(
+    c("time_thinking", "time_together_len"),
+    ~ factor(
+        fct_recode(
+          .,
+          lt_one_wk="Less than 1 week",
+          one_wk_to_six_mo="1 week - 6 months",
+          gt_six_mo_to_six_yr="6+ months - 6 years",
+          gt_six_yr="6+ years"
+        ),
+        ordered=F,
+        levels=c("lt_one_wk", "one_wk_to_six_mo", "gt_six_mo_to_six_yr",
+                 "gt_six_yr")
+    )
+  ) %>%
+  mutate(datetime = as.POSIXct(strptime(datetime,"%m/%d/%Y %H:%M:%S")))
+
+str(df_dog)
+```
+
+## Handle Repeat Responses
+
+We can examine the (`owner_id`, `name`) pairs, which we will refer to as the
+unique response identifier, in the data frame to determine if there are repeat
+responses for any of the dogs.
+
+```{r}
+df_dog %>%
+  dplyr::count(owner_id, dog_name) %>%
+  filter(n>1) %>%
+  arrange(desc(n))
+```
+We see that there are 109 non-unique response identifiers and that the maximum
+occurrence of an identifier is 2. Therefore, elimination of these duplicates
+should yield a data frame with $1704-109=1595$ responses. The datetime variable
+can then be dropped since it has served its purpose.
+
+```{r}
+df_dog <- df_dog %>%
+  group_by(owner_id, dog_name) %>%
+    slice_max(datetime) %>%
+  ungroup() %>%
+  dplyr::select(-datetime)
+dim(df_dog)
+stopifnot(identical(dim(df_dog)+0, c(1595, 23))) # Verify expected dim.
+```
+
+The number of responses in now matches the number of unique response
+identifiers, which means the repeat responses have been eliminated.
+
+## Summary
+
+Let's look at a summary of the dog data before we move on.
+
+```{r}
+summary(df_dog)
+```
+
+# Owner Data Processing
+
+## Load Raw Data
+
+Load the raw owner data and verify its dimensions and structure. We expect to
+have 1225 responses across 6 fields.
+
+```{r}
+df_owner <- read.csv('../data/raw/owners.csv', header=TRUE, skipNul=TRUE,
+                     na.strings=c("","NA"))
+str(df_owner)
+stopifnot(identical(dim(df_owner)+0, c(1225, 6))) # Verify expected dim.
+```
+
+## Apply Readable Column Names
+
+The columns so that they are easier to work with.
+
+```{r}
+colnames(df_owner) <- readr::read_lines(
+  '../references/owner-readable-column-names.txt')
+```
+
+## Adjusting Data Types
+
+Set representative data types for each column. We drop the the zip code column
+because it is not a reliable measure of location. Additionally, the
+`internal_logic_1` column can be dropped since it was an internal variable used
+by Typeform.
+
+```{r}
+df_owner <- df_owner %>%
+  mutate(owner_gender = as.factor(owner_gender)) %>%
+  mutate(owner_age = as.numeric(owner_age)) %>%
+  mutate(datetime = as.POSIXct(strptime(datetime,"%m/%d/%Y %H:%M:%S"))) %>%
+  dplyr::select(-c(zip_code, internal_logic_1))
+
+str(df_owner)
+```
+
+## Handle Repeat Responses
+
+For this data frame the `owner_id` is the unique response identifier. We expect
+one response for each `owner_id`;  let's verify this expectation.
+
+```{r}
+df_owner %>%
+  dplyr::count(owner_id) %>%
+  filter(n>1) %>%
+  arrange(desc(n))
+```
+
+We see that there are 154 non-unique response identifiers: 1 identifier with 4
+entries, 7 identifiers with 3 entries, and the remainder with 2 entries.
+Therefore, elimination of these duplicates should yield a data frame with
+$1225-154-7-1=1063$ responses. We can drop the datetime variable after this
+since it has served its purpose.
+
+```{r}
+df_owner <- df_owner %>%
+  group_by(owner_id) %>%
+    slice_max(datetime) %>%
+  ungroup() %>%
+  dplyr::select(-datetime)
+dim(df_owner)
+stopifnot(identical(dim(df_owner)+0, c(1063, 3))) # Verify expected dim.
+```
+
+The number of responses in now matches the number of unique response
+identifiers, which means the repeat responses have been eliminated.
+
+## Summary
+
+Let's look at a summary of the owner data before we move on.
+
+```{r}
+summary(df_owner)
+```
+
+# Unified Data Frame
+
+## Merge Data Frames
+
+We want to concatenate the data frames so that the owner information is
+included for each entry in the dog data frame.
+
+```{r}
+df <- merge(df_dog, df_owner, by="owner_id")
+df <- df[!duplicated(df), ]
+str(df)
+stopifnot(identical(dim(df)+0, c(1595, 25))) # Verify expected dim.
+```
+
+## Derived Columns
+
+### Generate Rank Columns
+
+Typeform did not have an option for a ranking response type, so we improved one.
+Participants were given a series of questions asking them to choose a
+characteristic for the given rank (e.g., please choose the 1st priority
+characteristic). There were 7 characteristics and we asked them for the first
+6 ranks, leaving the unselected characteristic as the lowest (i.e., 7th)
+priority. We use this section to convert those series of questions into the
+rankings we were attempting to collect.
+
+```{r}
+to_revised <- function(x) {
+  return(paste0("revised_", x))
+}
+
+# Set all ranks to 7, the lowest priority, by default.
+char_map = c(
+  "Age"="age_rank",
+  "Appearance"="appearance_rank",
+  "Breed"="breed_rank",
+  "Compatability with other pets in the home"="compatability_rank",
+  "Individual personality/behavior"="personality_rank",
+  "Size"="size_rank",
+  "Trainability"="trainability_rank"
+)
+for (rank_col in char_map) {
+  df[, rank_col] <- 7
+}
+for (rank_col in char_map) { 
+  revised_rank_col <- to_revised(rank_col)
+  df[, revised_rank_col] <- NA
+  for (r in 1:nrow(df)) {
+    df[r, revised_rank_col] <- ifelse(
+      df[r, "is_consider_another_dog"] == TRUE, 7, NA)
+  }
+}
+
+char_cols <- c(
+  'important_char_1', 'important_char_2', 'important_char_3',
+  'important_char_4', 'important_char_5', 'important_char_6'
+)
+
+# For each entry, assign each characteristic the rank corresponding to the
+# column it is listed under.
+# For example: size under important_char_1 should result in size_rank = 1 for
+# that entry.
+revised_rank_cnts <- vector(mode="integer", nrow(df))
+for (rank in seq_along(char_cols)) {
+  char_col <- char_cols[rank]
+  for (r in 1:nrow(df)) {
+    rank_col <- char_map[df[r, char_col]]
+    df[r, rank_col] <- rank
+    #df[r, rank_col] <- min(c(rank, df[r, rank_col]))
+    
+    revised_char_col <- paste0("revised_", char_col)
+    revised_char_value <- df[r, revised_char_col]
+    if (!is.na(revised_char_value)) {
+      revised_rank_col <- to_revised(char_map[df[r, revised_char_col]])
+      df[r, revised_rank_col] <- rank
+      #df[r, revised_rank_col] <- min(c(rank, df[r, revised_rank_col]))
+    }
+  }
+}
+
+summary(df %>% dplyr::select(matches('_rank$') & !contains("revised")))
+summary(df %>% dplyr::select(matches('_rank$') & contains("revised")))
+
+# We can now drop the original characteristic columns.
+df <- df %>%
+  dplyr::select(-contains('important_char'))
+```
+
+### Generate Convenience Columns
+
+```{r}
+df <- df %>%
+  mutate(is_satisfied = (met_expectations == "yes")) %>%
+  mutate(is_owner_male = (owner_gender == "male"))
+```
+
+
+## Inclusion Critera
+
+Count the number of owners before applying inclusion criteria.
+
+```{r}
+length(unique(df$owner_id))
+```
+
+Count the number of responses before applying inclusion criteria.
+
+```{r}
+dim(df)[1]
+```
+
+### Drop Low Ages
+
+For this study, we are only going to consider responses provided from adults;
+defined in the US persons aged 18 years or older.
+
+```{r}
+df <- df %>%
+  filter(owner_age >= 18)
+stopifnot(identical(dim(df)+0, c(1543, 29))) # Verify expected dim.
+```
+
+### Drop Improperly Ranked 
+
+Drop entries where the sum of ranks for an entry does not match the expected
+value.
+
+```{r}
+# rank_cols <- colnames(
+#   df %>% dplyr::select(contains("rank") & !contains("revised")))
+# 
+# rank_validator <- function(row) {
+#   cnt <- vector(mode="integer", length=7)
+#   for (col in rank_cols) {
+#     rank <- row[[col]]
+#     cnt[rank] = cnt[rank] + 1
+#     if (cnt[rank] > 1) return(FALSE)
+#   }
+#   return(TRUE)
+# }
+# 
+# df <- df %>%
+#   rowwise() %>%
+#   mutate(is_rank_valid = rank_validator(.data)) %>%
+#   ungroup() %>%
+#   filter(is_rank_valid) %>%
+#   dplyr::select(-is_rank_valid)
+# stopifnot(identical(dim(df)+0, c(1411, 28))) # Verify 132 entries dropped.
+```
+
+### Drop Entries Missing Required Data
+
+```{r}
+df <- df %>%
+  filter(!is.na(owner_gender))
+stopifnot(identical(dim(df)+0, c(1537, 29))) # Verify expected dim.
+```
+
+## Verify Unique Entries
+
+Check that all (owner, dog) entry pairs are unique.
+
+```{r}
+duplicates <- df %>%
+  dplyr::count(owner_id, dog_name) %>%
+  filter(n>1)
+stopifnot(identical(dim(duplicates)+0, c(0, 3))) # Verify no duplicates.
+```
+
+## Summary
+
+Take a last look at the data before saving it to disk.
+
+```{r}
+dim(df)
+summary(df)
+stopifnot(identical(dim(df)+0, c(1537, 29))) # Verify expected dim.
+```
+
+# Saving the Tidy Data
+
+Save the data to a file in RDS format so that the data types are saved and the
+output file is compressed.
+
+```{r}
+saveRDS(df, '../data/processed/tidy.Rds')
+rm(list = ls())
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```

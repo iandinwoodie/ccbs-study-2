@@ -1,0 +1,119 @@
+---
+title: "Significance of Rank Deltas"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document
+knit: (function(inputFile, encoding) {
+      out_dir <- "../results";
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        output_dir=file.path(dirname(inputFile), out_dir))})
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(MASS)
+library(caret)
+library(car)
+library(performance)
+
+knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
+```
+
+# Preparing the Data
+
+## Loading the Tidy Data
+
+Load the tidy data from disk.
+
+```{r}
+df <- readRDS('../data/processed/tidy.Rds')
+stopifnot(identical(dim(df)+0, c(1537, 29)))
+str(df, list.len=5)
+```
+
+# Calculations
+
+```{r}
+df %>%
+  dplyr::select(contains("rank")) %>%
+  dplyr::summarise(
+    dplyr::across(
+      everything(),~ janitor::round_half_up(mean(., na.rm = TRUE), 2))) %>%
+  dplyr::mutate(
+    age_delta = revised_age_rank - age_rank,
+    app_delta = revised_appearance_rank - appearance_rank,
+    breed_delta = revised_breed_rank - breed_rank,
+    comp_delta = revised_compatability_rank - compatability_rank,
+    pers_delta = revised_personality_rank - personality_rank,
+    size_delta = revised_size_rank - size_rank,
+    train_delta = revised_trainability_rank - trainability_rank) %>%
+  summary()
+```
+
+```{r}
+x <- df$age_rank
+y <- df$revised_age_rank
+(result <- wilcox.test(x, y, alternative = "two.sided"))
+results <- result$p.value
+```
+
+```{r}
+x <- df$appearance_rank
+y <- df$revised_appearance_rank
+(result <- wilcox.test(x, y, alternative = "two.sided"))
+results <- c(results, result$p.value)
+```
+
+```{r}
+x <- df$breed_rank
+y <- df$revised_breed_rank
+(result <- wilcox.test(x, y, alternative = "two.sided"))
+results <- c(results, result$p.value)
+```
+
+```{r}
+x <- df$compatability_rank
+y <- df$revised_compatability_rank
+(result <- wilcox.test(x, y, alternative = "two.sided"))
+results <- c(results, result$p.value)
+```
+
+```{r}
+x <- df$personality_rank
+y <- df$revised_personality_rank
+(result <- wilcox.test(x, y, alternative = "two.sided"))
+results <- c(results, result$p.value)
+```
+
+```{r}
+x <- df$size_rank
+y <- df$revised_size_rank
+(result <- wilcox.test(x, y, alternative = "two.sided"))
+results <- c(results, result$p.value)
+```
+
+```{r}
+x <- df$trainability_rank
+y <- df$revised_trainability_rank
+(result <- wilcox.test(x, y, alternative = "two.sided"))
+results <- c(results, result$p.value)
+```
+
+```{r}
+tibble(p.adjust(results, method='fdr'))
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```
+
+# Cleanup
+
+```{r}
+rm(list = ls())
+```

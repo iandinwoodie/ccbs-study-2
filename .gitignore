@@ -1,3 +1,12 @@
+### ccbs-study-2 ###
+
+# Non-raw data
+data/processed/*
+
+# Knit documents
+src/*.pdf
+src/*.html
+
 ### General ###
 
 # macOS Finder artifacts
@@ -16,3 +25,14 @@ venv/
 .env/
 .venv/
 
+### RStudio ###
+
+# User files
+.Rhistory
+.Rproj.user
+.Ruserdata
+
+### Microsoft Office ###
+
+# Temporary files
+~$*

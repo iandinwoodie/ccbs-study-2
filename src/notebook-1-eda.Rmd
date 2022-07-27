@@ -1,0 +1,799 @@
+---
+title: "Exploratory Data Analysis (EDA)"
+author: "Ian Dinwoodie"
+date: "`r Sys.Date()`"
+output: html_document
+knit: (function(inputFile, encoding) {
+      out_dir <- "../results";
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        output_dir=file.path(dirname(inputFile), out_dir))})
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(janitor)
+library(psych)
+library(caret)
+library(vcd)
+library(ggridges)
+library(plotrix)
+
+library(devtools)
+devtools::install_github("vqv/ggbiplot")
+library(ggbiplot)
+devtools::install_github("kevinblighe/PCAtools")
+library(PCAtools)
+devtools::install_github("psyteachr/introdataviz")
+library(introdataviz)
+
+knitr::opts_chunk$set(echo=TRUE)
+set.seed(1)
+```
+
+# Loading the Tidy Data
+
+Load the tidy data from disk if it is available. If it is not available, run
+`notebook-0-tidy.Rmd` to create it.
+
+```{r}
+df <- readRDS('../data/processed/tidy.Rds')
+str(df)
+stopifnot(identical(dim(df)+0, c(1537, 29)))
+```
+
+A summary of the loaded data is provided below.
+
+```{r}
+summary(df)
+```
+
+# Descriptive Stats
+
+## Owner Demographics
+
+The number of participating owners is equal to the number of unique owner
+identifiers.
+
+```{r}
+length(unique(df$owner_id))
+```
+
+Generate a breakdown of owner gender.
+
+```{r}
+df %>%
+  dplyr::distinct(owner_id, .keep_all=TRUE) %>%
+  dplyr::count(owner_gender) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Generate summary statistics for owner ages.
+
+```{r}
+summary(
+  df %>%
+    dplyr::distinct(owner_id, .keep_all=TRUE) %>%
+    dplyr::select(owner_age)
+)
+```
+
+Examine the distribution of owner ages.
+
+```{r}
+df %>%
+  ggplot(aes(x=owner_age)) +
+    geom_histogram(alpha=0.5, position="identity", aes(y = ..density..),
+                   color="black", bins=30) +
+    geom_density() +
+    geom_vline(xintercept=mean(df$owner_age), color="black", linetype="dashed",
+               size=1)
+```
+
+Examine the distribution of ages split by owner gender.
+
+```{r}
+df %>%
+  dplyr::select(is_owner_male, owner_age) %>%
+  dplyr::transmute(male_age=ifelse(is_owner_male==TRUE, owner_age, NA),
+                   female_age=ifelse(is_owner_male==FALSE, owner_age, NA)) %>%
+  summary()
+```
+
+Examine the distribution of ages split by adoption source.
+
+```{r}
+df %>%
+  dplyr::select(acquisition_source, owner_age) %>%
+  dplyr::group_by(acquisition_source) %>%
+  dplyr::summarise(min=min(owner_age), mean=mean(owner_age), max=max(owner_age))
+```
+
+```{r}
+means <- df %>%
+  dplyr::group_by(owner_gender) %>%
+  dplyr::summarise(means = mean(owner_age))
+df %>%
+  ggplot(aes(owner_age, fill = owner_gender)) +
+    geom_histogram(alpha=0.7, position="identity", aes(y = ..density..),
+                   color="black", bins=30) +
+    geom_density(alpha=0.7) +
+    geom_vline(xintercept=means$means, color=c("#F8766D", "#00BFC4"),
+               linetype="dashed", size=0.75)
+```
+
+## Dog Demographics
+
+The number of dogs corresponds to the number of rows in the data frame.
+
+```{r}
+dim(df)[1]
+```
+
+Generate summary statistics for the number of dogs per household.
+
+```{r}
+summary(as.data.frame(table(df$owner_id))$Freq)
+```
+
+Determine the number of single dog households.
+
+```{r}
+df %>%
+  dplyr::count(owner_id) %>%
+  dplyr::mutate(freq = n / sum(n)) %>%
+  dplyr::filter(n == 1) %>%
+  dplyr::mutate(freq = round(sum(freq) * 100, 2)) %>%
+  dplyr::count(freq)
+```
+Generate breakdown of living situation.
+
+```{r}
+df %>%
+  dplyr::count(is_living_with_dog) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+### Dogs Not-Living-With-Owner Demographics
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE) %>%
+  dplyr::count(time_together_len) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE) %>%
+  dplyr::count(curr_dog_location) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+## Expectations and Considerations
+
+Generate breakdown for meeting of expectations.
+
+```{r}
+df %>%
+  dplyr::count(met_expectations) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+```{r}
+df %>%
+  dplyr::group_by(is_satisfied) %>%
+  dplyr::summarise(n = n()) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Get count of owners with at least one dog that met expectations.
+
+```{r}
+df %>%
+  dplyr::group_by(owner_id) %>%
+  dplyr::summarise(sat_cnt = sum(is_satisfied)) %>%
+  dplyr::filter(sat_cnt > 0)
+```
+
+Get a count of owners where all dogs met expectations.
+
+```{r}
+df %>%
+  dplyr::group_by(owner_id) %>%
+  dplyr::summarise(sat_cnt = sum(is_satisfied), tot_cnt=n()) %>%
+  dplyr::filter(sat_cnt == tot_cnt)
+```
+
+Generate breakdown of acquisition sources.
+
+```{r}
+df %>%
+  dplyr::count(acquisition_source) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Generate breakdown for time spent thinking.
+
+```{r}
+df %>%
+  dplyr::count(time_thinking) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Generate breakdown for primary motivation.
+
+```{r}
+df %>%
+  dplyr::count(primary_motivation) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Generate a summary for characteristic ranks.
+
+```{r}
+df %>%
+  dplyr::select(contains("rank") & !contains("revised")) %>%
+  summary()
+```
+
+## Consideration of Another Dog
+
+Breakdown of owners that would consider getting another dog.
+
+```{r}
+df %>%
+  dplyr::group_by(owner_id) %>%
+  tidyr::fill(is_consider_another_dog, .direction="downup") %>%
+  dplyr::ungroup() %>%
+  dplyr::distinct(owner_id, .keep_all=TRUE) %>%
+  dplyr::count(is_consider_another_dog) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Breakdown of fully satisfied owners considering another dog.
+
+```{r}
+df %>%
+  dplyr::group_by(owner_id) %>%
+  dplyr::mutate(sat_cnt = sum(is_satisfied), tot_cnt=n()) %>%
+  dplyr::filter(sat_cnt == tot_cnt) %>%
+  tidyr::fill(is_consider_another_dog, .direction="downup") %>%
+  dplyr::ungroup() %>%
+  dplyr::distinct(owner_id, .keep_all=TRUE) %>%
+  dplyr::count(is_consider_another_dog) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Breakdown of owners satisfied with some, but not all, dogs considering another
+dog.
+
+```{r}
+df %>%
+  dplyr::group_by(owner_id) %>%
+  dplyr::mutate(sat_cnt = sum(is_satisfied), tot_cnt=n()) %>%
+  dplyr::filter(sat_cnt < tot_cnt, sat_cnt > 0) %>%
+  tidyr::fill(is_consider_another_dog, .direction="downup") %>%
+  dplyr::ungroup() %>%
+  dplyr::distinct(owner_id, .keep_all=TRUE) %>%
+  dplyr::count(is_consider_another_dog) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Breakdown of owners not satisfied with any dogs considering another dog.
+
+```{r}
+df %>%
+  dplyr::group_by(owner_id) %>%
+  dplyr::mutate(sat_cnt = sum(is_satisfied), tot_cnt=n()) %>%
+  dplyr::filter(sat_cnt == 0) %>%
+  tidyr::fill(is_consider_another_dog, .direction="downup") %>%
+  dplyr::ungroup() %>%
+  dplyr::distinct(owner_id, .keep_all=TRUE) %>%
+  dplyr::count(is_consider_another_dog) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Breakdown of revised acquisition source.
+
+```{r}
+df %>%
+  dplyr::group_by(revised_acquisition_source) %>%
+  dplyr::summarise(n = n()) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+Generate a summary for revised characteristic ranks.
+
+```{r}
+df %>%
+  dplyr::select(contains("rank") & contains("revised")) %>%
+  summary()
+```
+
+Difference in rank between revised rank and average of prior ranks.
+
+```{r}
+df %>%
+  dplyr::select(contains("rank")) %>%
+  dplyr::summarise(
+    dplyr::across(
+      everything(),~ janitor::round_half_up(mean(., na.rm = TRUE), 2))) %>%
+  dplyr::mutate(
+    age_delta = revised_age_rank - age_rank,
+    app_delta = revised_appearance_rank - appearance_rank,
+    breed_delta = revised_breed_rank - breed_rank,
+    comp_delta = revised_compatability_rank - compatability_rank,
+    pers_delta = revised_personality_rank - personality_rank,
+    size_delta = revised_size_rank - size_rank,
+    train_delta = revised_trainability_rank - trainability_rank) %>%
+  summary()
+```
+
+## Dog Location by Satisfaction
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE) %>%
+  dplyr::count(curr_dog_location) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE & is_satisfied==TRUE) %>%
+  dplyr::count(curr_dog_location) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE & is_satisfied==FALSE) %>%
+  dplyr::count(curr_dog_location) %>%
+  dplyr::mutate(freq = round(n / sum(n) * 100, 2)) %>%
+  janitor::adorn_totals("row")
+```
+
+```{r}
+df %>%
+  dplyr::filter(is_living_with_dog == FALSE & is_satisfied==FALSE)
+```
+
+# Data Exploration
+
+## Numeric Correlations
+
+```{r, fig.width=5, fig.height=4}
+pairs.panels(df[,12:19])
+```
+
+## Fields Split by Met Expecations
+
+### Owner Fields
+
+Split by owner gender.
+
+```{r}
+df %>%
+  dplyr::count(owner_gender, is_satisfied) %>%
+  tidyr::spread(is_satisfied, n) %>%
+  janitor::adorn_totals("row") %>%
+  janitor::adorn_totals("col")
+```
+
+```{r}
+df %>%
+  dplyr::group_by(owner_gender) %>%
+  dplyr::mutate(freq = sum(is_satisfied) / n()) %>%
+  ggplot(aes(x=reorder(owner_gender, desc(freq)), fill=is_satisfied)) +
+    geom_bar(position="fill") +
+    xlab("owner gender") +
+    ylab("frequency")
+```
+
+Split by owner age.
+
+```{r}
+means <- df %>%
+  dplyr::group_by(is_satisfied) %>%
+  dplyr::summarise(means = mean(owner_age))
+df %>%
+  ggplot(aes(owner_age, fill = is_satisfied)) +
+    geom_histogram(alpha=0.7, position="identity", aes(y = ..density..),
+                   color="black", bins=30) +
+    geom_density(alpha=0.7) +
+    geom_vline(xintercept=means$means, color=c("#F8766D", "#00BFC4"),
+               linetype="dashed", size=0.75)
+```
+
+### Dog Fields
+
+Split by acquisition source.
+
+```{r}
+df %>%
+  dplyr::count(acquisition_source, is_satisfied) %>%
+  tidyr::spread(is_satisfied, n) %>%
+  janitor::adorn_totals("row") %>%
+  janitor::adorn_totals("col")
+```
+
+```{r}
+df %>%
+  dplyr::group_by(acquisition_source) %>%
+  dplyr::mutate(freq = sum(is_satisfied) / n()) %>%
+  dplyr::mutate(
+    acquisition_source = fct_recode(
+      acquisition_source,
+      "family/friend"="family_or_friend",
+      "pet shop"="pet_shop",
+      "shelter/rescue"="rescue"
+    )
+  ) %>%
+  ggplot(aes(x=reorder(acquisition_source, desc(freq)), fill=is_satisfied)) +
+    geom_bar(position="fill") +
+    xlab("acquisition source") +
+    ylab("frequency") +
+    theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Split by living situation.
+
+```{r}
+df %>%
+  dplyr::count(is_living_with_dog, is_satisfied) %>%
+  tidyr::spread(is_satisfied, n) %>%
+  janitor::adorn_totals("row") %>%
+  janitor::adorn_totals("col")
+```
+
+```{r}
+df %>%
+  dplyr::group_by(is_living_with_dog) %>%
+  dplyr::mutate(freq = sum(is_satisfied) / n()) %>%
+  ggplot(aes(x=reorder(is_living_with_dog, desc(freq)), fill=is_satisfied)) +
+    geom_bar(position="fill") +
+    xlab("living with dog") +
+    ylab("frequency")
+```
+
+## Considerations Fields
+
+Split by time spent thinking.
+
+```{r}
+df %>%
+  dplyr::count(time_thinking, is_satisfied) %>%
+  tidyr::spread(is_satisfied, n) %>%
+  janitor::adorn_totals("row") %>%
+  janitor::adorn_totals("col")
+```
+
+```{r}
+df %>%
+  dplyr::group_by(time_thinking) %>%
+  dplyr::mutate(freq = sum(is_satisfied) / n()) %>%
+  ggplot(aes(x=reorder(time_thinking, desc(freq)), fill=is_satisfied)) +
+    geom_bar(position="fill") +
+    xlab("time spent thinking") +
+    ylab("frequency")
+```
+
+Split by primary motivation.
+
+```{r}
+df %>%
+  dplyr::count(primary_motivation, is_satisfied) %>%
+  tidyr::spread(is_satisfied, n) %>%
+  janitor::adorn_totals("row") %>%
+  janitor::adorn_totals("col")
+```
+
+```{r}
+df %>%
+  dplyr::group_by(primary_motivation) %>%
+  dplyr::mutate(freq = sum(is_satisfied) / n()) %>%
+  ggplot(aes(x=reorder(primary_motivation, desc(freq)), fill=is_satisfied)) +
+    geom_bar(position="fill") +
+    xlab("primary motivation") +
+    ylab("frequency") +
+    theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Split by consideration of another dog.
+
+```{r}
+df %>%
+  dplyr::filter(!is.na(is_consider_another_dog)) %>%
+  dplyr::count(is_consider_another_dog, is_satisfied) %>%
+  tidyr::spread(is_satisfied, n) %>%
+  janitor::adorn_totals("row") %>%
+  janitor::adorn_totals("col")
+```
+
+```{r}
+df %>%
+  dplyr::filter(!is.na(is_consider_another_dog)) %>%
+  dplyr::group_by(is_consider_another_dog) %>%
+  dplyr::mutate(freq = sum(is_satisfied) / n()) %>%
+  ggplot(aes(x=reorder(is_consider_another_dog, desc(freq)), fill=is_satisfied)) +
+    geom_bar(position="fill") +
+    xlab("would consider an additional dog") +
+    ylab("frequency") +
+    theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Split by ranks.
+
+```{r, fig.width=5, fig.height=3}
+featurePlot(
+  x = df[, 13:19],
+  y = factor(df$is_satisfied),
+  plot = "box",
+  scales = list(y = list(relation="free"), x = list(rot = 90)),
+  layout = c(4,2),
+  auto.key = list(columns = 2)
+)
+```
+
+Split by revised ranks.
+
+```{r, fig.width=5, fig.height=3}
+featurePlot(
+  x = df[, 20:26],
+  y = factor(df$is_satisfied),
+  plot = "box",
+  scales = list(y = list(relation="free"), x = list(rot = 90)),
+  layout = c(4,2),
+  auto.key = list(columns = 2)
+)
+```
+
+Split by source.
+
+```{r, fig.width=5, fig.height=3}
+featurePlot(
+  x = df[, 13:19],
+  y = factor(df$acquisition_source),
+  plot = "box",
+  scales = list(y = list(relation="free"), x = list(rot = 90)),
+  layout = c(4,2),
+  auto.key = list(columns = 2)
+)
+```
+
+## Contingency Tables
+
+```{r}
+table(df$primary_motivation, df$time_thinking)
+```
+
+```{r}
+table(df$acquisition_source, df$time_thinking)
+```
+
+## Violin Plots
+
+```{r}
+df_long <- df %>%
+  dplyr::select(owner_gender, is_satisfied, dplyr::contains("rank"), time_thinking) %>%
+  rename_with(~ gsub("revised_(.*)", "\\1_revised", .)) %>%
+  tidyr::pivot_longer(
+    cols=age_rank:trainability_rank_revised,
+    names_to=c("char", "revised"),
+    names_pattern="(.*)_rank_?(revised)?",
+    values_to="rank",
+    values_drop_na=TRUE
+  ) %>%
+  dplyr::mutate(
+    Adoption=factor(ifelse(revised =="revised", "future", "past"),
+                    levels=c("past", "future"))) %>%
+  dplyr::mutate(char=as.factor(char))
+
+width <- 5
+df_long %>%
+  ggplot(aes(x=char, y=rank, fill=Adoption)) +
+    introdataviz::geom_split_violin(alpha=.5, trim=T) +
+    geom_boxplot(width=.125, alpha=.8, show.legend=FALSE) +
+    scale_x_discrete(name = "Characteristic") +
+    scale_y_continuous(name = "Rank",
+                       limits = c(1, 7),
+                       breaks = seq(1, 7, 1))
+#ggsave("../results/fig-1-violin-plot.pdf")
+```
+
+## Ridge Plots
+
+```{r}
+df_long %>%
+  dplyr::filter(Adoption=="past") %>%
+  ggplot(aes(x=rank, y=char, fill = 0.5 - abs(0.5 - stat(ecdf)))) +
+    stat_density_ridges(geom = "density_ridges_gradient", calc_ecdf = TRUE) +
+    scale_fill_viridis_c(name = "Tail probability", direction = -1)
+```
+```{r}
+df_long %>%
+  dplyr::filter(Adoption=="future") %>%
+  ggplot(aes(x=rank, y=char, fill = 0.5 - abs(0.5 - stat(ecdf)))) +
+    stat_density_ridges(geom = "density_ridges_gradient", calc_ecdf = TRUE) +
+    scale_fill_viridis_c(name = "Tail probability", direction = -1)
+```
+
+```{r}
+df_long %>%
+  ggplot(aes(x=rank, y=char, fill=Adoption,
+             group=interaction(char, !ifelse(Adoption=="past", F, T)))) +
+    ggridges::geom_density_ridges(alpha=0.5) +
+  theme_ridges() +
+  labs(
+    x = "Rank",
+    y = "Characteristic",
+  )
+#ggsave("../results/fig-1-ridgeline-plot.pdf")
+```
+## Jitter Plots
+
+```{r}
+df_long2 <- df_long %>%
+  mutate(char2 = 2*as.numeric(as.factor(char))+0.8*as.numeric(as.factor(Adoption)))
+
+df_long2 %>%
+  ggplot(aes(x=char2, y=rank)) +
+    geom_jitter(aes(color=Adoption), width=0.3, alpha=0.3) +
+    geom_boxplot(aes(x=char2, y=rank,
+                     group=interaction(char, Adoption)),
+                 width=0.35, alpha=0.1) +
+    scale_y_continuous(breaks=c(1:7),
+                       labels=c(1:7)) +
+    scale_x_continuous(breaks=unique(df_long2$char2[1:7])+.4,
+                       labels=unique(df_long2$char)) +
+    labs(
+      y = "Rank",
+      x = "Characteristic",
+    ) +
+    guides(colour = guide_legend(override.aes = list(alpha = 1)))
+ggsave("../results/fig-1-jitter-plot.pdf", dpi=300)
+```
+
+## Box Plots
+
+```{r}
+df_long2 <- df_long %>%
+  mutate(char2 = 2*as.numeric(as.factor(char))+0.8*as.numeric(as.factor(Adoption)))
+
+df_long2 %>%
+  ggplot(aes(x=char2, y=rank)) +
+    #geom_jitter(aes(color=Adoption), width=0.3, alpha=0.3) +
+    geom_boxplot(aes(x=char2, y=rank,
+                     group=interaction(char, Adoption),
+                     color=Adoption),
+                 width=0.35, alpha=0.1) +
+    scale_x_continuous(breaks=unique(df_long2$char2[1:7])+.4,
+                       labels=unique(df_long2$char)) +
+    labs(
+      y = "Rank",
+      x = "Characteristic",
+    ) +
+    guides(colour = guide_legend(override.aes = list(alpha = 1)))
+#ggsave("../results/fig-1-box-plot.pdf")
+```
+
+```{r}
+df_long2 %>%
+  ggplot(aes(x=char, y=rank, fill=Adoption)) +
+  geom_boxplot() +
+  labs(
+    y = "Rank",
+    x = "Characteristic",
+  )
+#ggsave("../results/fig-1-box-plot.pdf")
+```
+
+## Nested Bar Chart
+
+```{r}
+df_long_totals <- df_long %>%
+  dplyr::select(owner_gender, is_satisfied, time_thinking) %>%
+  plyr::ddply(.(owner_gender, time_thinking), summarize, is_satisfied=sum(is_satisfied))
+
+
+titanic.colors<-list("gray90",c("#0000ff","#7700ee","#aa00cc","#dd00aa"),
+c("#ddcc00","#ee9900"),c("pink","lightblue"))
+
+barNest(
+  is_satisfied~owner_gender+time_thinking,
+  data=df_long_totals,
+  col=titanic.colors,
+  #showall=TRUE,
+  main="Owner satisfaction by owner gender, age, and forethought",
+  ylab="Proportion satisfied"
+  #FUN=c("propbrk")#,"binciWu","binciWl","valid.n"),
+  #shrink=0.15
+  #trueval="Yes"
+)
+```
+
+## Principal Component Analysis
+
+```{r}
+df_pca <- df %>%
+  dplyr::select(contains("rank") & !contains("revised"))
+pc <- prcomp(df_pca, center = TRUE, scale = TRUE)
+attributes(pc)
+print(pc)
+stats::biplot(pc, scale = 0)
+# Explained variance.
+round(pc$sdev^2 / sum(pc$sdev^2), 2)
+```
+
+```{r}
+g <- ggbiplot(pc,
+              obs.scale = 1,
+              var.scale = 1,
+              groups = df$is_satisfied,
+              ellipse = TRUE,
+              circle = TRUE,
+              ellipse.prob = 0.68)
+g <- g + scale_color_discrete(name = '')
+g <- g + theme(legend.direction = 'horizontal',
+               legend.position = 'top')
+print(g)
+```
+
+```{r}
+pc <- PCAtools::pca(df_pca)
+PCAtools::screeplot(pc)
+```
+```{r, fig.width=3, fig.height=3}
+PCAtools::biplot(pc, showLoadings = T)
+```
+
+```{r, fig.height=4}
+PCAtools::plotloadings(pc, labSize = 3)
+```
+
+```{r, fig.width=5, fig.asp=1}
+pairsplot(
+  pc,
+  triangle = TRUE,
+  trianglelabSize = 12,
+  hline = 0,
+  vline = 0,
+  pointSize = 1
+)
+```
+
+## Factor Analysis
+
+```{r}
+df_rank <- df[,c(13, 18:19)]
+fa(r=cor(df_rank), nfactors=dim(df_rank)[2], rotate="varimax", SMC=FALSE, fm="pa")
+```
+
+# Save Session Info
+
+```{r}
+sessionInfo()
+```
+
+# Cleanup
+
+```{r}
+rm(list = ls())
+```

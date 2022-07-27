@@ -1,0 +1,6 @@
+owner_id
+zip_code
+owner_gender
+owner_age
+datetime
+internal_logic_1
